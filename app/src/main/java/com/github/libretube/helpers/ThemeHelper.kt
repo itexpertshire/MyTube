@@ -134,7 +134,7 @@ object ThemeHelper {
     fun getStyledAppName(context: Context): Spanned {
         val colorPrimary = getThemeColor(context, R.attr.colorPrimaryDark)
         val hexColor = String.format("#%06X", (0xFFFFFF and colorPrimary))
-        return "Libre<span  style='color:$hexColor';>Tube</span>"
+        return "My<span  style='color:$hexColor';>Tube</span>"
             .parseAsHtml(HtmlCompat.FROM_HTML_MODE_COMPACT)
     }
 }
