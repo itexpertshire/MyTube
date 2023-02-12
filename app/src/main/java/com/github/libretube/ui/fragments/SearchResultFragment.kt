@@ -20,10 +20,13 @@ import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.ui.adapters.SearchAdapter
 import com.github.libretube.ui.base.BaseFragment
 import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 
 class SearchResultFragment : BaseFragment() {
-    private lateinit var binding: FragmentSearchResultBinding
+    private var _binding: FragmentSearchResultBinding? = null
+    private val binding get() = _binding!!
 
     private var nextPage: String? = null
     private var query: String = ""
@@ -41,7 +44,7 @@ class SearchResultFragment : BaseFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = FragmentSearchResultBinding.inflate(layoutInflater, container, false)
+        _binding = FragmentSearchResultBinding.inflate(layoutInflater, container, false)
         return binding.root
     }
 
@@ -73,19 +76,27 @@ class SearchResultFragment : BaseFragment() {
 
         fetchSearch()
 
-        binding.searchRecycler.viewTreeObserver
-            .addOnScrollChangedListener {
-                if (!binding.searchRecycler.canScrollVertically(1)) {
-                    if (nextPage != null) fetchNextSearchItems()
-                }
+        binding.searchRecycler.viewTreeObserver.addOnScrollChangedListener {
+            if (_binding?.searchRecycler?.canScrollVertically(1) == false &&
+                nextPage != null
+            ) {
+                fetchNextSearchItems()
             }
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 
     private fun fetchSearch() {
         lifecycleScope.launchWhenCreated {
             view?.let { context?.hideKeyboard(it) }
             val response = try {
-                RetrofitInstance.api.getSearchResults(query, apiSearchFilter)
+                withContext(Dispatchers.IO) {
+                    RetrofitInstance.api.getSearchResults(query, apiSearchFilter)
+                }
             } catch (e: IOException) {
                 println(e)
                 Log.e(TAG(), "IOException, you might not have internet connection $e")
@@ -94,11 +105,10 @@ class SearchResultFragment : BaseFragment() {
                 Log.e(TAG(), "HttpException, unexpected response")
                 return@launchWhenCreated
             }
-            runOnUiThread {
-                searchAdapter = SearchAdapter(response.items.toMutableList())
-                binding.searchRecycler.adapter = searchAdapter
-                binding.noSearchResult.isVisible = response.items.isEmpty()
-            }
+            searchAdapter = SearchAdapter()
+            binding.searchRecycler.adapter = searchAdapter
+            searchAdapter.submitList(response.items)
+            binding.noSearchResult.isVisible = response.items.isEmpty()
             nextPage = response.nextpage
         }
     }
@@ -106,11 +116,13 @@ class SearchResultFragment : BaseFragment() {
     private fun fetchNextSearchItems() {
         lifecycleScope.launchWhenCreated {
             val response = try {
-                RetrofitInstance.api.getSearchResultsNextPage(
-                    query,
-                    apiSearchFilter,
-                    nextPage!!
-                )
+                withContext(Dispatchers.IO) {
+                    RetrofitInstance.api.getSearchResultsNextPage(
+                        query,
+                        apiSearchFilter,
+                        nextPage!!
+                    )
+                }
             } catch (e: IOException) {
                 println(e)
                 Log.e(TAG(), "IOException, you might not have internet connection")
@@ -120,10 +132,8 @@ class SearchResultFragment : BaseFragment() {
                 return@launchWhenCreated
             }
             nextPage = response.nextpage!!
-            kotlin.runCatching {
-                if (response.items.isNotEmpty()) {
-                    searchAdapter.updateItems(response.items)
-                }
+            if (response.items.isNotEmpty()) {
+                searchAdapter.submitList(searchAdapter.currentList + response.items)
             }
         }
     }

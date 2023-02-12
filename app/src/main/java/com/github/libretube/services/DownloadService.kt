@@ -2,12 +2,16 @@ package com.github.libretube.services
 
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
 import android.content.Intent
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
+import android.util.SparseBooleanArray
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
+import androidx.core.util.set
+import androidx.core.util.valueIterator
+import androidx.lifecycle.LifecycleService
+import androidx.lifecycle.lifecycleScope
 import com.github.libretube.R
 import com.github.libretube.api.CronetHelper
 import com.github.libretube.api.RetrofitInstance
@@ -15,7 +19,7 @@ import com.github.libretube.compat.PendingIntentCompat
 import com.github.libretube.constants.DOWNLOAD_CHANNEL_ID
 import com.github.libretube.constants.DOWNLOAD_PROGRESS_NOTIFICATION_ID
 import com.github.libretube.constants.IntentData
-import com.github.libretube.db.DatabaseHolder.Companion.Database
+import com.github.libretube.db.DatabaseHolder.Database
 import com.github.libretube.db.obj.Download
 import com.github.libretube.db.obj.DownloadItem
 import com.github.libretube.enums.FileType
@@ -39,7 +43,6 @@ import java.net.SocketTimeoutException
 import java.net.URL
 import java.util.concurrent.Executors
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -56,18 +59,15 @@ import okio.source
 /**
  * Download service with custom implementation of downloading using [HttpURLConnection].
  */
-class DownloadService : Service() {
-
+class DownloadService : LifecycleService() {
     private val binder = LocalBinder()
     private val dispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-    private val jobMain = SupervisorJob()
-    private val scope = CoroutineScope(dispatcher + jobMain)
+    private val coroutineContext = dispatcher + SupervisorJob()
 
     private lateinit var notificationManager: NotificationManager
     private lateinit var summaryNotificationBuilder: NotificationCompat.Builder
 
-    private val jobs = mutableMapOf<Int, Job>()
-    private val downloadQueue = mutableMapOf<Int, Boolean>()
+    private val downloadQueue = SparseBooleanArray()
     private val _downloadFlow = MutableSharedFlow<Pair<Int, DownloadStatus>>()
     val downloadFlow: SharedFlow<Pair<Int, DownloadStatus>> = _downloadFlow
 
@@ -79,6 +79,7 @@ class DownloadService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
             ACTION_DOWNLOAD_RESUME -> resume(intent.getIntExtra("id", -1))
             ACTION_DOWNLOAD_PAUSE -> pause(intent.getIntExtra("id", -1))
@@ -92,9 +93,11 @@ class DownloadService : Service() {
         val audioQuality = intent.getStringExtra(IntentData.audioQuality)
         val subtitleCode = intent.getStringExtra(IntentData.subtitleCode)
 
-        scope.launch {
+        lifecycleScope.launch(coroutineContext) {
             try {
-                val streams = RetrofitInstance.api.getStreams(videoId)
+                val streams = withContext(Dispatchers.IO) {
+                    RetrofitInstance.api.getStreams(videoId)
+                }
 
                 val thumbnailTargetFile = getDownloadFile(DownloadHelper.THUMBNAIL_DIR, fileName)
 
@@ -151,7 +154,7 @@ class DownloadService : Service() {
             Database.downloadDao().insertDownloadItem(item)
         }.toInt()
 
-        jobs[item.id] = scope.launch {
+        lifecycleScope.launch(coroutineContext) {
             downloadFile(item)
         }
     }
@@ -179,7 +182,7 @@ class DownloadService : Service() {
 
         try {
             // Set start range where last downloading was held.
-            val con = CronetHelper.getCronetEngine().openConnection(url) as HttpURLConnection
+            val con = CronetHelper.cronetEngine.openConnection(url) as HttpURLConnection
             con.requestMethod = "GET"
             con.setRequestProperty("Range", "bytes=$totalRead-")
             con.connectTimeout = DownloadHelper.DEFAULT_TIMEOUT
@@ -222,8 +225,7 @@ class DownloadService : Service() {
 
             try {
                 // Check if downloading is still active and read next bytes.
-                while (downloadQueue[item.id] == true &&
-                    sourceByte
+                while (downloadQueue[item.id] && sourceByte
                         .read(sink.buffer, DownloadHelper.DOWNLOAD_CHUNK_SIZE)
                         .also { lastRead = it } != -1L
                 ) {
@@ -268,7 +270,8 @@ class DownloadService : Service() {
                 sourceByte.close()
                 con.disconnect()
             }
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+        }
 
         val completed = when {
             totalRead < item.downloadSize -> {
@@ -289,11 +292,14 @@ class DownloadService : Service() {
      */
     fun resume(id: Int) {
         // If file is already downloading then avoid new download job.
-        if (downloadQueue[id] == true) return
+        if (downloadQueue[id]) {
+            return
+        }
 
-        if (downloadQueue.values.count { it } >= DownloadHelper.getMaxConcurrentDownloads()) {
+        val downloadCount = downloadQueue.valueIterator().asSequence().count { it }
+        if (downloadCount >= DownloadHelper.getMaxConcurrentDownloads()) {
             toastFromMainThread(getString(R.string.concurrent_downloads_limit_reached))
-            scope.launch {
+            lifecycleScope.launch(coroutineContext) {
                 _downloadFlow.emit(id to DownloadStatus.Paused)
             }
             return
@@ -302,7 +308,7 @@ class DownloadService : Service() {
         val downloadItem = awaitQuery {
             Database.downloadDao().findDownloadItemById(id)
         }
-        scope.launch {
+        lifecycleScope.launch(coroutineContext) {
             downloadFile(downloadItem)
         }
     }
@@ -314,10 +320,8 @@ class DownloadService : Service() {
         downloadQueue[id] = false
 
         // Stop the service if no downloads are active.
-        if (downloadQueue.none { it.value }) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_DETACH)
-            }
+        if (downloadQueue.valueIterator().asSequence().none { it }) {
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
             sendBroadcast(Intent(ACTION_SERVICE_STOPPED))
             stopSelf()
         }
@@ -345,7 +349,7 @@ class DownloadService : Service() {
      * Check whether the file downloading or not.
      */
     fun isDownloading(id: Int): Boolean {
-        return downloadQueue[id] ?: false
+        return downloadQueue[id]
     }
 
     private fun notifyForeground() {
@@ -466,9 +470,9 @@ class DownloadService : Service() {
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent?): IBinder {
-        val ids = intent?.getIntArrayExtra("ids")
-        ids?.forEach { id -> resume(id) }
+    override fun onBind(intent: Intent): IBinder {
+        super.onBind(intent)
+        intent.getIntArrayExtra("ids")?.forEach { resume(it) }
         return binder
     }
 

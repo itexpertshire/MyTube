@@ -6,12 +6,10 @@ import android.os.StrictMode.VmPolicy
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.ExistingPeriodicWorkPolicy
-import com.github.libretube.api.CronetHelper
 import com.github.libretube.api.RetrofitInstance
 import com.github.libretube.constants.BACKGROUND_CHANNEL_ID
 import com.github.libretube.constants.DOWNLOAD_CHANNEL_ID
 import com.github.libretube.constants.PUSH_CHANNEL_ID
-import com.github.libretube.db.DatabaseHolder
 import com.github.libretube.helpers.ImageHelper
 import com.github.libretube.helpers.NotificationHelper
 import com.github.libretube.helpers.PreferenceHelper
@@ -22,6 +20,7 @@ import com.github.libretube.util.ExceptionHandler
 class LibreTubeApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        instance = this
 
         /**
          * Initialize the needed notification channels for DownloadService and BackgroundMode
@@ -34,11 +33,6 @@ class LibreTubeApp : Application() {
         PreferenceHelper.initialize(applicationContext)
 
         /**
-         * Initialize the [DatabaseHolder]
-         */
-        DatabaseHolder().initializeDatabase(this)
-
-        /**
          * Bypassing fileUriExposedException, see https://stackoverflow.com/questions/38200282/android-os-fileuriexposedexception-file-storage-emulated-0-test-txt-exposed
          */
         val builder = VmPolicy.Builder()
@@ -48,7 +42,6 @@ class LibreTubeApp : Application() {
          * Set the api and the auth api url
          */
         RetrofitInstance.initialize()
-        CronetHelper.initCronet(this)
         ImageHelper.initializeImageLoader(this)
 
         /**
@@ -111,5 +104,9 @@ class LibreTubeApp : Application() {
                 pushChannel
             )
         )
+    }
+
+    companion object {
+        lateinit var instance: LibreTubeApp
     }
 }

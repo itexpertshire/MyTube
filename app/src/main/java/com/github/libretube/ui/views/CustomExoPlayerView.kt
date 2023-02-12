@@ -13,6 +13,7 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.os.postDelayed
 import androidx.core.view.updateLayoutParams
@@ -45,6 +46,7 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.CaptionStyleCompat
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.exoplayer2.ui.SubtitleView
+import com.google.android.exoplayer2.ui.TimeBar
 import com.google.android.exoplayer2.util.RepeatModeUtil
 
 @SuppressLint("ClickableViewAccessibility")
@@ -118,6 +120,8 @@ internal class CustomExoPlayerView(
 
         // don't let the player view hide its controls automatically
         controllerShowTimeoutMs = -1
+        // don't let the player view show its controls automatically
+        controllerAutoShow = false
 
         // locking the player
         binding.lockPlayer.setOnClickListener {
@@ -172,8 +176,26 @@ internal class CustomExoPlayerView(
 
                     // keep screen on if the video is playing
                     keepScreenOn = player.isPlaying == true
+
+                    if (player.playbackState == Player.STATE_ENDED && !autoplayEnabled) {
+                        showController()
+                        cancelHideControllerTask()
+                    }
                 }
             }
+        })
+
+        // prevent the controls from disappearing while scrubbing the time bar
+        binding.exoProgress.addListener(object : TimeBar.OnScrubListener {
+            override fun onScrubStart(timeBar: TimeBar, position: Long) {
+                cancelHideControllerTask()
+            }
+
+            override fun onScrubMove(timeBar: TimeBar, position: Long) {
+                cancelHideControllerTask()
+            }
+
+            override fun onScrubStop(timeBar: TimeBar, position: Long, canceled: Boolean) {}
         })
 
         playerViewModel?.isFullscreen?.observe(viewLifecycleOwner!!) { isFullscreen ->
@@ -603,8 +625,9 @@ internal class CustomExoPlayerView(
      * Add extra margin to the top bar to not overlap the status bar
      */
     private fun updateTopBarMargin() {
-        val isFullscreen = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE ||
-            playerViewModel?.isFullscreen?.value == true
+        val isFullscreen =
+            resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE ||
+                playerViewModel?.isFullscreen?.value == true
         binding.topBar.updateLayoutParams<MarginLayoutParams> {
             topMargin = (if (isFullscreen) 10 else 0).dpToPx().toInt()
         }
@@ -618,10 +641,8 @@ internal class CustomExoPlayerView(
         player?.let { player ->
             if (player.isPlaying) {
                 player.pause()
-                if (!isControllerFullyVisible) showController()
             } else {
                 player.play()
-                if (isControllerFullyVisible) hideController()
             }
         }
     }
@@ -648,6 +669,18 @@ internal class CustomExoPlayerView(
 
         if (isControllerFullyVisible) hideController()
         updateVolume(distanceY)
+    }
+
+    override fun onSwipeCenterScreen(distanceY: Float) {
+        if (!PlayerHelper.swipeGestureEnabled) return
+
+        if (isControllerFullyVisible) hideController()
+
+        if (distanceY < 0) {
+            playerGestureController.isMoving = false
+            (context as? AppCompatActivity)?.onBackPressedDispatcher?.onBackPressed()
+            playerViewModel?.isFullscreen?.value = false
+        }
     }
 
     override fun onSwipeEnd() {

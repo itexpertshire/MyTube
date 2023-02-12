@@ -7,7 +7,7 @@ import com.github.libretube.api.obj.StreamItem
 import com.github.libretube.api.obj.Subscribe
 import com.github.libretube.api.obj.Subscription
 import com.github.libretube.constants.PreferenceKeys
-import com.github.libretube.db.DatabaseHolder.Companion.Database
+import com.github.libretube.db.DatabaseHolder.Database
 import com.github.libretube.db.obj.LocalSubscription
 import com.github.libretube.extensions.TAG
 import com.github.libretube.helpers.PreferenceHelper
@@ -17,6 +17,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 object SubscriptionHelper {
+    private const val GET_SUBSCRIPTIONS_LIMIT = 100
+
     suspend fun subscribe(channelId: String) {
         val token = PreferenceHelper.getToken()
         if (token.isNotEmpty()) {
@@ -102,17 +104,20 @@ object SubscriptionHelper {
         }
     }
 
-    suspend fun getFormattedLocalSubscriptions(): String {
-        return Database.localSubscriptionDao().getAll()
-            .joinToString(",") { it.channelId }
-    }
-
     suspend fun getSubscriptions(): List<Subscription> {
         val token = PreferenceHelper.getToken()
         return if (token.isNotEmpty()) {
             RetrofitInstance.authApi.subscriptions(token)
         } else {
-            RetrofitInstance.authApi.unauthenticatedSubscriptions(getFormattedLocalSubscriptions())
+            val subscriptions = Database.localSubscriptionDao().getAll().map { it.channelId }
+            when {
+                subscriptions.size > GET_SUBSCRIPTIONS_LIMIT -> RetrofitInstance.authApi.unauthenticatedSubscriptions(
+                    subscriptions
+                )
+                else -> RetrofitInstance.authApi.unauthenticatedSubscriptions(
+                    subscriptions.joinToString(",")
+                )
+            }
         }
     }
 
@@ -121,7 +126,15 @@ object SubscriptionHelper {
         return if (token.isNotEmpty()) {
             RetrofitInstance.authApi.getFeed(token)
         } else {
-            RetrofitInstance.authApi.getUnauthenticatedFeed(getFormattedLocalSubscriptions())
+            val subscriptions = Database.localSubscriptionDao().getAll().map { it.channelId }
+            when {
+                subscriptions.size > GET_SUBSCRIPTIONS_LIMIT -> RetrofitInstance.authApi.getUnauthenticatedFeed(
+                    subscriptions
+                )
+                else -> RetrofitInstance.authApi.getUnauthenticatedFeed(
+                    subscriptions.joinToString(",")
+                )
+            }
         }
     }
 }
