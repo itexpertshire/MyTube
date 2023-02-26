@@ -17,12 +17,11 @@ import com.github.libretube.ui.activities.SettingsActivity
 import com.github.libretube.ui.adapters.VideosAdapter
 import com.github.libretube.ui.base.BaseFragment
 import com.google.android.material.snackbar.Snackbar
-import java.io.IOException
 import retrofit2.HttpException
+import java.io.IOException
 
 class TrendsFragment : BaseFragment() {
-    private lateinit var binding: FragmentTrendsBinding
-
+    lateinit var binding: FragmentTrendsBinding
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -35,11 +34,17 @@ class TrendsFragment : BaseFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        fetchTrending()
+
+
+       //fetchTrending()
         binding.homeRefresh.isEnabled = true
         binding.homeRefresh.setOnRefreshListener {
-            fetchTrending()
+       //fetchTrending()
+
+
         }
+
+
     }
 
     private fun fetchTrending() {
@@ -92,4 +97,5 @@ class TrendsFragment : BaseFragment() {
             }
         }
     }
+
 }

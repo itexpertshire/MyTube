@@ -1,6 +1,7 @@
 package com.github.libretube.ui.fragments
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,7 +14,9 @@ import com.github.libretube.R
 import com.github.libretube.api.PlaylistsHelper
 import com.github.libretube.api.RetrofitInstance
 import com.github.libretube.api.SubscriptionHelper
+import com.github.libretube.constants.FEATURED_VIDEO_MAX_CNT
 import com.github.libretube.constants.PreferenceKeys
+import com.github.libretube.constants.RECOMMENDATION_VIDEO_MAX_CNT
 import com.github.libretube.databinding.FragmentHomeBinding
 import com.github.libretube.db.DatabaseHolder
 import com.github.libretube.extensions.awaitQuery
@@ -29,7 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class HomeFragment : BaseFragment() {
-    private lateinit var binding: FragmentHomeBinding
+    lateinit var binding: FragmentHomeBinding
     private val subscriptionsViewModel: SubscriptionsViewModel by activityViewModels()
 
     override fun onCreateView(
@@ -70,12 +73,15 @@ class HomeFragment : BaseFragment() {
 
     private fun fetchHomeFeed() {
         launchWhenCreatedIO {
-            loadTrending()
-            loadBookmarks()
+            //loadTrending()
+            loadRecommendationLocal()
+            //loadBookmarks()
+
         }
         launchWhenCreatedIO {
             loadFeed()
-            loadPlaylists()
+            //loadPlaylists()
+           // loadRecommendation()
         }
     }
 
@@ -95,6 +101,46 @@ class HomeFragment : BaseFragment() {
         }
     }
 
+    private suspend fun loadRecommendationLocal() {
+        Log.d("Amit","Function-loadRecommendationLocal")
+        var recommAdapter: VideosAdapter? = null
+        val recommendation = runCatching {
+            DatabaseHolder.Database.recommendStreamItemDao().getAll().shuffled()
+        }.getOrNull().takeIf { it?.isNotEmpty() == true } ?.take(RECOMMENDATION_VIDEO_MAX_CNT) ?: return
+
+        recommAdapter= VideosAdapter(
+            recommendation.toMutableList(),
+            showAllAtOnce = false,
+            hideWatched = PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false)
+        )
+
+        runOnUiThread {
+            makeVisible(binding.trendingRV, binding.trendingTV)
+            binding.trendingRV.layoutManager = GridLayoutManager(context, 1)
+
+            binding.trendingRV.adapter =recommAdapter
+
+            binding.scroll.setOnScrollChangeListener(object: RecyclerView.OnScrollListener(),
+                View.OnScrollChangeListener {
+                override fun onScrollChange(p0: View?, p1: Int, p2: Int, p3: Int, p4: Int) {
+                    //Log.d("Amit","setOnScrollChangeListener $p1 $p2 $p3 $p4")
+                    if (!binding.scroll.canScrollVertically(1)) {
+                        // scroll view is at bottom
+                        //Log.d("Amit","scroll view is at bottom $p1 $p2 $p3 $p4")
+                        //Log.d("Amit","recommendation.lastIndex -"+recommendation.lastIndex)
+                        //if (recommendation.lastIndex == recommendation.size) return
+                        recommAdapter.updateItems()
+                    }
+                }
+            })
+
+        }
+    }
+
+
+
+
+
     private suspend fun loadFeed() {
         val savedFeed = withContext(Dispatchers.Main) {
             subscriptionsViewModel.videoFeed.value
@@ -104,9 +150,13 @@ class HomeFragment : BaseFragment() {
             !savedFeed.isNullOrEmpty()
         ) { savedFeed } else {
             runCatching {
-                SubscriptionHelper.getFeed()
+                SubscriptionHelper.getFeedCustomSort()
             }.getOrElse { return }
-        }.takeIf { it.isNotEmpty() }?.take(20) ?: return
+        }.takeIf { it.isNotEmpty() }?.take(FEATURED_VIDEO_MAX_CNT) ?: return
+
+        //Log.d("Amit","custom sort feed-$feed")
+
+
 
         runOnUiThread {
             makeVisible(binding.featuredRV, binding.featuredTV)

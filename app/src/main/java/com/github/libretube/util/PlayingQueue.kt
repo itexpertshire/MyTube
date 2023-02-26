@@ -201,4 +201,53 @@ object PlayingQueue {
         onQueueTapListener = {}
         onTrackChangedListeners.clear()
     }
+
+    fun mixSortStreams(streams: List<StreamItem>) : List<StreamItem> {
+        val subscriptionsFeedLists = mutableListOf(listOf<StreamItem>())
+        val feed = mutableListOf<StreamItem>()
+        Log.d("Amit",         "mixSortStreams size" + streams.size    )
+        run {
+            streams.distinctBy { it.uploaderName }.map { it.uploaderName }
+                .forEach { it1 ->
+                    if (it1 != null) {
+                        subscriptionsFeedLists.add(
+                            streams.filter { it.uploaderName.equals(it1) }
+                                .sortedBy { it.uploadedDate }.toMutableList())
+                    }
+                }
+
+
+
+            Log.d(
+                "Amit",
+                "each video collection-subscriptionsFeedLists size" + subscriptionsFeedLists.size
+            )
+
+            // subscriptionsFeedLists.keys.parallelStream().forEach { feed.addAll(subscriptionsFeedLists.getValue(it)) }
+            val maxElementsSubscriptions = subscriptionsFeedLists.maxOf { it.size }
+            //Log.d("Amit", "maxElementsSubscriptions size - $maxElementsSubscriptions")
+            var l = 0
+            for (i in 0 until maxElementsSubscriptions step 1) {
+
+
+                //Log.d("Amit", "i-$i")
+
+                subscriptionsFeedLists.forEach { it1 ->
+                    run {
+                        //Log.d("Amit", "it1-$it1-l-$l")
+                        if (i <= it1.size - 1) {
+                            feed.add(l, it1[i])
+                            l++
+                            //Log.d("Amit", "feed-size" + feed.size)
+                        } else {
+                            return@forEach
+                        }
+                    }
+                }
+            }
+
+    }
+       Log.d("Amit", "mixSortStreams feed-size" + feed.size)
+        return feed
+    }
 }

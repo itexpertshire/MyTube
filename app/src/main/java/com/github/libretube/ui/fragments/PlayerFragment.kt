@@ -712,6 +712,8 @@ class PlayerFragment : Fragment(R.layout.fragment_player), OnlinePlayerOptions {
                 // add the video to the watch history
                 if (PlayerHelper.watchHistoryEnabled) {
                     DatabaseHelper.addToWatchHistory(videoId!!, streams)
+                    //Store details of watched videos
+                    DatabaseHelper.addToKeywordHistory(videoId!!, streams)
                 }
             }
         }

@@ -44,6 +44,7 @@ import com.github.libretube.ui.models.PlayerViewModel
 import com.github.libretube.ui.models.SearchViewModel
 import com.github.libretube.ui.models.SubscriptionsViewModel
 import com.github.libretube.ui.tools.SleepTimer
+import com.github.libretube.util.SchedulerUtils
 import com.google.android.material.elevation.SurfaceColors
 
 class MainActivity : BaseActivity() {
@@ -60,6 +61,7 @@ class MainActivity : BaseActivity() {
 
     val windowHelper = WindowHelper(this)
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -69,6 +71,14 @@ class MainActivity : BaseActivity() {
         // start service that gets called on closure
         try {
             startService(Intent(this, ClosingService::class.java))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // start Recommendation service
+        try {
+            SchedulerUtils.wrapper(this);
+
         } catch (e: Exception) {
             e.printStackTrace()
         }

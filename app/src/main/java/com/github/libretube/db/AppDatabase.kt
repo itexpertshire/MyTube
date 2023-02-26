@@ -3,24 +3,10 @@ package com.github.libretube.db
 import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import com.github.libretube.db.dao.CustomInstanceDao
-import com.github.libretube.db.dao.DownloadDao
-import com.github.libretube.db.dao.LocalPlaylistsDao
-import com.github.libretube.db.dao.LocalSubscriptionDao
-import com.github.libretube.db.dao.PlaylistBookmarkDao
-import com.github.libretube.db.dao.SearchHistoryDao
-import com.github.libretube.db.dao.WatchHistoryDao
-import com.github.libretube.db.dao.WatchPositionDao
-import com.github.libretube.db.obj.CustomInstance
-import com.github.libretube.db.obj.Download
-import com.github.libretube.db.obj.DownloadItem
-import com.github.libretube.db.obj.LocalPlaylist
-import com.github.libretube.db.obj.LocalPlaylistItem
-import com.github.libretube.db.obj.LocalSubscription
-import com.github.libretube.db.obj.PlaylistBookmark
-import com.github.libretube.db.obj.SearchHistoryItem
-import com.github.libretube.db.obj.WatchHistoryItem
-import com.github.libretube.db.obj.WatchPosition
+import androidx.room.TypeConverters
+import com.github.libretube.db.dao.*
+import com.github.libretube.db.obj.*
+import com.github.libretube.util.Converters
 
 @Database(
     entities = [
@@ -33,16 +19,37 @@ import com.github.libretube.db.obj.WatchPosition
         LocalPlaylist::class,
         LocalPlaylistItem::class,
         Download::class,
-        DownloadItem::class
+        DownloadItem::class,
+        KeywordHistoryItem::class,
+        RecommendStreamItem::class,
+        BlockListItem::class
     ],
-    version = 10,
+    version = 11,
     autoMigrations = [
         AutoMigration(from = 7, to = 8),
         AutoMigration(from = 8, to = 9),
-        AutoMigration(from = 9, to = 10)
+        AutoMigration(from = 9, to = 10),
+        AutoMigration(from = 10, to = 11)
     ]
 )
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
+
+    /**
+     * Block List
+     */
+    abstract fun blockListDao(): BlockListDao
+
+    /**
+     * Keyword History
+     */
+    abstract fun recommendStreamItemDao(): RecommendStreamItemDao
+
+    /**
+     * Keyword History
+     */
+    abstract fun keywordHistoryDao(): KeywordHistoryDao
+
     /**
      * Watch History
      */

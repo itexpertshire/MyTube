@@ -35,6 +35,7 @@ class SubscriptionsViewModel : ViewModel() {
                 Log.e(TAG(), e.toString())
                 return@launch
             }
+            Log.d("Amit","videoFeed from subscriptions-"+videoFeed.size)
             this@SubscriptionsViewModel.videoFeed.postValue(videoFeed)
             if (videoFeed.isNotEmpty()) {
                 // save the last recent video to the prefs for the notification worker

@@ -110,7 +110,10 @@ object SubscriptionHelper {
             RetrofitInstance.authApi.subscriptions(token)
         } else {
             val subscriptions = Database.localSubscriptionDao().getAll().map { it.channelId }
+            Log.d("Amit","subscriptions-$subscriptions")
+            Log.d("Amit","subscriptions size-"+subscriptions.size)
             when {
+
                 subscriptions.size > GET_SUBSCRIPTIONS_LIMIT -> RetrofitInstance.authApi.unauthenticatedSubscriptions(
                     subscriptions
                 )
@@ -127,6 +130,8 @@ object SubscriptionHelper {
             RetrofitInstance.authApi.getFeed(token)
         } else {
             val subscriptions = Database.localSubscriptionDao().getAll().map { it.channelId }
+            Log.d("Amit","subscriptions-$subscriptions")
+            Log.d("Amit","subscriptions size-"+subscriptions.size)
             when {
                 subscriptions.size > GET_SUBSCRIPTIONS_LIMIT -> RetrofitInstance.authApi.getUnauthenticatedFeed(
                     subscriptions
@@ -136,5 +141,63 @@ object SubscriptionHelper {
                 )
             }
         }
+    }
+
+    suspend fun getFeedCustomSort(): List<StreamItem> {
+        val token = PreferenceHelper.getToken()
+        val feed = mutableListOf<StreamItem>()
+         if (token.isNotEmpty()) {
+             return RetrofitInstance.authApi.getFeed(token)
+        } else {
+            val subscriptions = Database.localSubscriptionDao().getAll().map { it.channelId }
+            //Log.d("Amit","subscriptions-$subscriptions")
+            //Log.d("Amit","subscriptions size-"+subscriptions.size)
+             val videoFeed: List<StreamItem>? = if (subscriptions.size > GET_SUBSCRIPTIONS_LIMIT) {
+                 RetrofitInstance.authApi.getUnauthenticatedFeed(subscriptions)
+             } else {
+                 RetrofitInstance.authApi.getUnauthenticatedFeed(subscriptions.joinToString(","))
+             }
+
+             ///Custom Sort, pick latest videos from each channels
+
+             val subscriptionsFeedLists = mutableMapOf<String, MutableList<StreamItem>>()
+
+             //Log.d("Amit" ,"subscriptionsFeedLists-$subscriptionsFeedLists")
+
+             if (videoFeed != null) {
+                 videoFeed.distinctBy { it.uploaderName }.map { it.uploaderName }
+                     .forEach { it1 ->
+                         subscriptionsFeedLists[it1.toString()] =
+                             videoFeed.filter{ it ->it.uploaderName.equals(it1)}.take(5).sortedBy { it.uploadedDate }.toMutableList()
+                         //Log.d("Amit", "each video collection-subscriptionsFeedLists size"+subscriptionsFeedLists.size)
+                     }
+
+                // subscriptionsFeedLists.keys.parallelStream().forEach { feed.addAll(subscriptionsFeedLists.getValue(it)) }
+                val maxElementsSubscriptions = subscriptionsFeedLists.maxOf { it -> it.value.size }
+                 //Log.d("Amit", "maxElementsSubscriptions size - $maxElementsSubscriptions")
+                 var l = 0
+                 for (i in 0 until maxElementsSubscriptions step 1) {
+
+
+                    // Log.d("Amit" ,"i-$i")
+
+                     subscriptionsFeedLists.keys.forEach { it1 ->
+                         run {
+                             //Log.d("Amit", "it1-$it1-l-$l")
+                             if ( i <= subscriptionsFeedLists.getValue(it1).size-1) {
+                                 feed.add(l, subscriptionsFeedLists.getValue(it1)[i])
+                                 l++
+                                 //Log.d("Amit", "feed-size" + feed.size)
+                             } else {
+                                 return@forEach
+                             }
+
+                         }
+                     }
+                 }
+
+             }
+        }
+        return feed
     }
 }

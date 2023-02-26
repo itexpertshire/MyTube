@@ -5,7 +5,9 @@ import android.util.Log
 import androidx.navigation.fragment.NavHostFragment
 import com.github.libretube.R
 import com.github.libretube.api.RetrofitInstance
+import com.github.libretube.api.obj.StreamItem
 import com.github.libretube.constants.PreferenceKeys
+import com.github.libretube.db.DatabaseHelper
 import com.github.libretube.db.DatabaseHolder
 import com.github.libretube.db.obj.WatchPosition
 import com.github.libretube.enums.ShareObjectType
@@ -15,6 +17,7 @@ import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.obj.ShareData
 import com.github.libretube.ui.activities.MainActivity
+import com.github.libretube.ui.adapters.VideosAdapter
 import com.github.libretube.ui.dialogs.AddToPlaylistDialog
 import com.github.libretube.ui.dialogs.DownloadDialog
 import com.github.libretube.ui.dialogs.ShareDialog
@@ -31,9 +34,11 @@ import kotlinx.coroutines.launch
  */
 class VideoOptionsBottomSheet(
     private val videoId: String,
-    videoName: String
+    videoName: String,
+    adapter:VideosAdapter = VideosAdapter(mutableListOf<StreamItem>())
 ) : BaseBottomSheet() {
     private val shareData = ShareData(currentVideo = videoName)
+    private var adpt = adapter
     override fun onCreate(savedInstanceState: Bundle?) {
         // List that stores the different menu options. In the future could be add more options here.
         val optionsList = mutableListOf(
@@ -52,6 +57,7 @@ class VideoOptionsBottomSheet(
         // show the mark as watched option if watch positions are enabled
         if (PlayerHelper.watchPositionsVideo) {
             optionsList += getString(R.string.mark_as_watched)
+            optionsList += getString(R.string.not_interested)
         }
 
         setSimpleItems(optionsList) { which ->
@@ -113,6 +119,7 @@ class VideoOptionsBottomSheet(
                             ) as NavHostFragment?
                         // get the current fragment
                         val fragment = navHostFragment?.childFragmentManager?.fragments?.firstOrNull()
+
                         Log.e(
                             "fragments",
                             navHostFragment?.childFragmentManager?.fragments.orEmpty()
@@ -122,6 +129,39 @@ class VideoOptionsBottomSheet(
                             videoId
                         )
                     }
+                }
+                //Not Interested
+                getString(R.string.not_interested) -> {
+                    val watchPosition = WatchPosition(videoId, Long.MAX_VALUE)
+                   // Log.d("Amit", "Not Interested - $watchPosition")
+                    CoroutineScope(Dispatchers.IO).launch {
+                        //Log.d("Amit", "Updating blockList - $watchPosition")
+                        DatabaseHelper.addToBlockList(watchPosition.videoId)
+                        DatabaseHolder.Database.recommendStreamItemDao()
+                            .deleteById(watchPosition.videoId)
+                    }
+                        if (PreferenceHelper.getBoolean(
+                                PreferenceKeys.HIDE_WATCHED_FROM_FEED,
+                                false
+                            )
+                        ) {
+                            // get the host fragment containing the current fragment
+                            val navHostFragment =
+                                (context as MainActivity).supportFragmentManager.findFragmentById(
+                                    R.id.fragment
+                                ) as NavHostFragment?
+                            // get the current fragment
+                            val fragment =
+                                navHostFragment?.childFragmentManager?.fragments?.firstOrNull()
+
+                            Log.e(
+                                "fragments",
+                                navHostFragment?.childFragmentManager?.fragments.orEmpty()
+                                    .joinToString(", ") { it::class.java.name.toString() }
+                            )
+                            (fragment as? SubscriptionsFragment)?.subscriptionsAdapter?.removeItemById(videoId)
+                            adpt.removeItemById(videoId)
+                        }
                 }
             }
         }

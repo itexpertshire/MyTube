@@ -12,6 +12,9 @@ interface WatchHistoryDao {
     @Query("SELECT * FROM watchHistoryItem")
     suspend fun getAll(): List<WatchHistoryItem>
 
+    @Query("SELECT * FROM watchHistoryItem where videoId = :ID")
+    suspend fun getVideo(ID: String): WatchHistoryItem
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(watchHistoryItems: List<WatchHistoryItem>)
 

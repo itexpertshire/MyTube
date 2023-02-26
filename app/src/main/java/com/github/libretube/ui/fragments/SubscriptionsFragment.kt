@@ -1,6 +1,7 @@
 package com.github.libretube.ui.fragments
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,6 +21,7 @@ import com.github.libretube.ui.adapters.VideosAdapter
 import com.github.libretube.ui.base.BaseFragment
 import com.github.libretube.ui.models.SubscriptionsViewModel
 import com.github.libretube.ui.sheets.BaseBottomSheet
+import com.github.libretube.util.PlayingQueue
 
 class SubscriptionsFragment : BaseFragment() {
     private lateinit var binding: FragmentSubscriptionsBinding
@@ -53,6 +55,7 @@ class SubscriptionsFragment : BaseFragment() {
             PreferenceKeys.SAVE_FEED,
             false
         )
+
 
         // update the text according to the current order and filter
         binding.sortTV.text = resources.getStringArray(R.array.sortOptions)[selectedSortOrder]
@@ -160,6 +163,8 @@ class SubscriptionsFragment : BaseFragment() {
                 else -> throw IllegalArgumentException()
             }
         }
+
+        Log.d("Amit","selectedSortOrder-$selectedSortOrder")
         // sort the feed
         val sortedFeed = when (selectedSortOrder) {
             0 -> feed
@@ -168,7 +173,7 @@ class SubscriptionsFragment : BaseFragment() {
             3 -> feed.sortedBy { it.views }
             4 -> feed.sortedBy { it.uploaderName }
             5 -> feed.sortedBy { it.uploaderName }.reversed()
-            else -> feed
+            else -> PlayingQueue.mixSortStreams(feed)
         }.toMutableList()
 
         // add an "all caught up item"

@@ -1,5 +1,7 @@
 package com.github.libretube.constants
 
+
+
 /**
  * API link for the update checker
  */
@@ -59,3 +61,16 @@ const val DATABASE_NAME = "LibreTubeDatabase"
  * New Streams notifications
  */
 const val NOTIFICATION_WORK_NAME = "NotificationService"
+
+
+/**
+ * Id of recommendation job
+ */
+
+const val RECOMMENDATION_JOB_ID = 9911
+const val RECOMMENDATION_JOB_STATUS = "rec_job_status"
+const val RECOMMENDATION_JOB_INTERVAL = 15
+const val KEYWORD_HISTORY_SIZE = 100
+const val RECOMMENDATION_VIDEO_MAX_CNT = 100
+const val RECOMMENDATION_PER_KEYWORD_MAX_CNT = 5
+const val FEATURED_VIDEO_MAX_CNT = 50
