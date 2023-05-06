@@ -1,13 +1,16 @@
 package com.github.libretube.services
 
 import android.app.NotificationManager
-import android.app.PendingIntent
+import android.app.PendingIntent.FLAG_CANCEL_CURRENT
+import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
 import android.util.SparseBooleanArray
 import androidx.core.app.NotificationCompat
+import androidx.core.app.PendingIntentCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.getSystemService
 import androidx.core.util.set
 import androidx.core.util.valueIterator
 import androidx.lifecycle.LifecycleService
@@ -15,7 +18,6 @@ import androidx.lifecycle.lifecycleScope
 import com.github.libretube.R
 import com.github.libretube.api.CronetHelper
 import com.github.libretube.api.RetrofitInstance
-import com.github.libretube.compat.PendingIntentCompat
 import com.github.libretube.constants.DOWNLOAD_CHANNEL_ID
 import com.github.libretube.constants.DOWNLOAD_PROGRESS_NOTIFICATION_ID
 import com.github.libretube.constants.IntentData
@@ -38,7 +40,12 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.util.concurrent.Executors
+import kotlin.io.path.absolute
+import kotlin.io.path.createFile
+import kotlin.io.path.fileSize
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,7 +55,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okio.BufferedSink
 import okio.buffer
 import okio.sink
 import okio.source
@@ -96,21 +102,22 @@ class DownloadService : LifecycleService() {
                     RetrofitInstance.api.getStreams(videoId)
                 }
 
-                val thumbnailTargetFile = getDownloadFile(DownloadHelper.THUMBNAIL_DIR, fileName)
+                val thumbnailTargetPath = getDownloadPath(DownloadHelper.THUMBNAIL_DIR, fileName)
+                    .absolute()
 
                 val download = Download(
                     videoId,
                     streams.title,
                     streams.description,
                     streams.uploader,
-                    streams.uploadDate.toString(),
-                    thumbnailTargetFile.absolutePath
+                    streams.uploadDate,
+                    thumbnailTargetPath
                 )
                 Database.downloadDao().insertDownload(download)
                 ImageHelper.downloadImage(
                     this@DownloadService,
                     streams.thumbnailUrl,
-                    thumbnailTargetFile.absolutePath
+                    thumbnailTargetPath
                 )
 
                 val downloadItems = streams.toDownloadItems(
@@ -136,13 +143,11 @@ class DownloadService : LifecycleService() {
      * for the requested file.
      */
     private fun start(item: DownloadItem) {
-        val file = when (item.type) {
-            FileType.AUDIO -> getDownloadFile(DownloadHelper.AUDIO_DIR, item.fileName)
-            FileType.VIDEO -> getDownloadFile(DownloadHelper.VIDEO_DIR, item.fileName)
-            FileType.SUBTITLE -> getDownloadFile(DownloadHelper.SUBTITLE_DIR, item.fileName)
-        }
-        file.createNewFile()
-        item.path = file.absolutePath
+        item.path = when (item.type) {
+            FileType.AUDIO -> getDownloadPath(DownloadHelper.AUDIO_DIR, item.fileName)
+            FileType.VIDEO -> getDownloadPath(DownloadHelper.VIDEO_DIR, item.fileName)
+            FileType.SUBTITLE -> getDownloadPath(DownloadHelper.SUBTITLE_DIR, item.fileName)
+        }.createFile().absolute()
 
         lifecycleScope.launch(coroutineContext) {
             item.id = Database.downloadDao().insertDownloadItem(item).toInt()
@@ -158,8 +163,8 @@ class DownloadService : LifecycleService() {
         downloadQueue[item.id] = true
         val notificationBuilder = getNotificationBuilder(item)
         setResumeNotification(notificationBuilder, item)
-        val file = File(item.path)
-        var totalRead = file.length()
+        val path = item.path
+        var totalRead = path.fileSize()
         val url = URL(item.url ?: return)
 
         url.getContentLength().let { size ->
@@ -206,7 +211,8 @@ class DownloadService : LifecycleService() {
                 return
             }
 
-            val sink: BufferedSink = file.sink(true).buffer()
+            @Suppress("NewApi") // The StandardOpenOption enum is desugared.
+            val sink = path.sink(StandardOpenOption.APPEND).buffer()
             val sourceByte = con.inputStream.source()
 
             var lastTime = System.currentTimeMillis() / 1000
@@ -337,7 +343,7 @@ class DownloadService : LifecycleService() {
     }
 
     private fun notifyForeground() {
-        notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager = getSystemService()!!
 
         summaryNotificationBuilder = NotificationCompat
             .Builder(this, DOWNLOAD_CHANNEL_ID)
@@ -353,13 +359,10 @@ class DownloadService : LifecycleService() {
     }
 
     private fun getNotificationBuilder(item: DownloadItem): NotificationCompat.Builder {
-        val activityIntent = PendingIntentCompat.getActivity(
-            this@DownloadService,
-            0,
-            Intent(this@DownloadService, MainActivity::class.java)
-                .putExtra("fragmentToOpen", "downloads"),
-            PendingIntent.FLAG_CANCEL_CURRENT
-        )
+        val intent = Intent(this@DownloadService, MainActivity::class.java)
+            .putExtra("fragmentToOpen", "downloads")
+        val activityIntent = PendingIntentCompat
+            .getActivity(this@DownloadService, 0, intent, FLAG_CANCEL_CURRENT, false)
 
         return NotificationCompat
             .Builder(this, DOWNLOAD_CHANNEL_ID)
@@ -410,15 +413,14 @@ class DownloadService : LifecycleService() {
     }
 
     private fun getResumeAction(id: Int): NotificationCompat.Action {
-        val intent = Intent(this, NotificationReceiver::class.java).apply {
-            action = ACTION_DOWNLOAD_RESUME
-            putExtra("id", id)
-        }
+        val intent = Intent(this, NotificationReceiver::class.java)
+            .setAction(ACTION_DOWNLOAD_RESUME)
+            .putExtra("id", id)
 
         return NotificationCompat.Action.Builder(
             R.drawable.ic_play,
             getString(R.string.resume),
-            PendingIntentCompat.getBroadcast(this, id, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+            PendingIntentCompat.getBroadcast(this, id, intent, FLAG_UPDATE_CURRENT, false)
         ).build()
     }
 
@@ -430,21 +432,16 @@ class DownloadService : LifecycleService() {
         return NotificationCompat.Action.Builder(
             R.drawable.ic_pause,
             getString(R.string.pause),
-            PendingIntentCompat.getBroadcast(this, id, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+            PendingIntentCompat.getBroadcast(this, id, intent, FLAG_UPDATE_CURRENT, false)
         ).build()
     }
 
     /**
      * Get a [File] from the corresponding download directory and the file name
      */
-    private fun getDownloadFile(directory: String, fileName: String): File {
-        return File(
-            DownloadHelper.getDownloadDir(
-                this@DownloadService,
-                directory
-            ),
-            fileName
-        )
+    private fun getDownloadPath(directory: String, fileName: String): Path {
+        @Suppress("NewApi") // The Path class is desugared.
+        return DownloadHelper.getDownloadDir(this, directory).resolve(fileName)
     }
 
     override fun onDestroy() {

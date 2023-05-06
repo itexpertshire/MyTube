@@ -9,6 +9,7 @@ import android.os.IBinder
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -22,17 +23,18 @@ import com.github.libretube.obj.DownloadStatus
 import com.github.libretube.receivers.DownloadReceiver
 import com.github.libretube.services.DownloadService
 import com.github.libretube.ui.adapters.DownloadsAdapter
-import com.github.libretube.ui.base.BaseFragment
 import com.github.libretube.ui.viewholders.DownloadsViewHolder
-import java.io.File
+import kotlin.io.path.fileSize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-class DownloadsFragment : BaseFragment() {
-    private lateinit var binding: FragmentDownloadsBinding
+class DownloadsFragment : Fragment() {
+    private var _binding: FragmentDownloadsBinding? = null
+    private val binding get() = _binding!!
+
     private var binder: DownloadService.LocalBinder? = null
     private val downloads = mutableListOf<DownloadWithItems>()
     private val downloadReceiver = DownloadReceiver()
@@ -63,7 +65,7 @@ class DownloadsFragment : BaseFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = FragmentDownloadsBinding.inflate(layoutInflater)
+        _binding = FragmentDownloadsBinding.inflate(inflater)
         return binding.root
     }
 
@@ -72,9 +74,10 @@ class DownloadsFragment : BaseFragment() {
 
         val dbDownloads = runBlocking(Dispatchers.IO) {
             Database.downloadDao().getAll()
-        }
+        }.takeIf { it.isNotEmpty() } ?: return
+
+        downloads.clear()
         downloads.addAll(dbDownloads)
-        if (downloads.isEmpty()) return
 
         binding.downloadsEmpty.visibility = View.GONE
         binding.downloads.visibility = View.VISIBLE
@@ -84,7 +87,7 @@ class DownloadsFragment : BaseFragment() {
         binding.downloads.adapter = DownloadsAdapter(requireContext(), downloads) {
             var isDownloading = false
             val ids = it.downloadItems
-                .filter { item -> File(item.path).length() < item.downloadSize }
+                .filter { item -> item.path.fileSize() < item.downloadSize }
                 .map { item -> item.id }
 
             if (!serviceConnection.isBound) {
@@ -111,6 +114,7 @@ class DownloadsFragment : BaseFragment() {
             object : RecyclerView.AdapterDataObserver() {
                 override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
                     super.onItemRangeRemoved(positionStart, itemCount)
+                    val binding = _binding ?: return
                     if (binding.downloads.adapter?.itemCount == 0) {
                         binding.downloads.visibility = View.GONE
                         binding.downloadsEmpty.visibility = View.VISIBLE
@@ -148,7 +152,7 @@ class DownloadsFragment : BaseFragment() {
         val index = downloads.indexOfFirst {
             it.downloadItems.any { item -> item.id == id }
         }
-        val view = binding.downloads.findViewHolderForAdapterPosition(index) as? DownloadsViewHolder
+        val view = _binding?.downloads?.findViewHolderForAdapterPosition(index) as? DownloadsViewHolder
 
         view?.binding?.apply {
             when (status) {
@@ -181,8 +185,13 @@ class DownloadsFragment : BaseFragment() {
 
     override fun onStop() {
         super.onStop()
-        if (serviceConnection.isBound) {
+        runCatching {
             context?.unbindService(serviceConnection)
         }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }

@@ -6,7 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.github.libretube.db.dao.*
 import com.github.libretube.db.obj.*
-import com.github.libretube.util.Converters
+import com.github.libretube.db.Converters
 
 @Database(
     entities = [
@@ -22,14 +22,16 @@ import com.github.libretube.util.Converters
         DownloadItem::class,
         KeywordHistoryItem::class,
         RecommendStreamItem::class,
-        BlockListItem::class
+        BlockListItem::class,
+        SubscriptionGroup::class
     ],
-    version = 11,
+    version = 12,
     autoMigrations = [
         AutoMigration(from = 7, to = 8),
         AutoMigration(from = 8, to = 9),
         AutoMigration(from = 9, to = 10),
-        AutoMigration(from = 10, to = 11)
+        AutoMigration(from = 10, to = 11),
+        AutoMigration(from = 10, to = 12)
     ]
 )
 @TypeConverters(Converters::class)
@@ -89,4 +91,9 @@ abstract class AppDatabase : RoomDatabase() {
      * Downloads
      */
     abstract fun downloadDao(): DownloadDao
+
+    /**
+     * Subscription groups
+     */
+    abstract fun subscriptionGroupsDao(): SubscriptionGroupsDao
 }

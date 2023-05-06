@@ -83,6 +83,11 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
 
+            <!-- allow being recognized as a music player -->
+            <intent-filter>
+                <action android:name="android.intent.action.MUSIC_PLAYER" />
+                <category android:name="android.intent.category.CATEGORY_APP_MUSIC" />
+            </intent-filter>
         </activity>
 
         <activity-alias
@@ -264,6 +269,7 @@
                 <data android:pathPrefix="/embed/" />
                 <data android:pathPrefix="/watch" />
                 <data android:pathPrefix="/shorts/" />
+                <data android:pathPrefix="/live/" />
                 <!-- channel prefix -->
                 <data android:pathPrefix="/channel/" />
                 <data android:pathPrefix="/user/" />
@@ -333,12 +339,12 @@
             android:exported="false" />
 
         <service
-            android:name=".services.UpdateService"
+            android:name=".services.OnlinePlayerService"
             android:enabled="true"
             android:exported="false" />
 
         <service
-            android:name=".services.BackgroundMode"
+            android:name=".services.OfflinePlayerService"
             android:enabled="true"
             android:exported="false" />
 
@@ -353,4 +359,10 @@
             android:exported="false" />
     </application>
 
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="*" />
+        </intent>
+    </queries>
 </manifest>

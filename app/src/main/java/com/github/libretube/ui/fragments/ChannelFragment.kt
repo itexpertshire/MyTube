@@ -7,7 +7,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.view.children
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.github.libretube.R
 import com.github.libretube.api.RetrofitInstance
@@ -24,7 +27,6 @@ import com.github.libretube.obj.ChannelTabs
 import com.github.libretube.obj.ShareData
 import com.github.libretube.ui.adapters.SearchAdapter
 import com.github.libretube.ui.adapters.VideosAdapter
-import com.github.libretube.ui.base.BaseFragment
 import com.github.libretube.ui.dialogs.ShareDialog
 import com.github.libretube.ui.extensions.setupSubscriptionButton
 import java.io.IOException
@@ -33,8 +35,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 
-class ChannelFragment : BaseFragment() {
-    private lateinit var binding: FragmentChannelBinding
+class ChannelFragment : Fragment() {
+    private var _binding: FragmentChannelBinding? = null
+    private val binding get() = _binding!!
 
     private var channelId: String? = null
     private var channelName: String? = null
@@ -45,7 +48,7 @@ class ChannelFragment : BaseFragment() {
 
     private var onScrollEnd: () -> Unit = {}
 
-    val possibleTabs = listOf(
+    private val possibleTabs = listOf(
         ChannelTabs.Channels,
         ChannelTabs.Playlists,
         ChannelTabs.Livestreams,
@@ -67,7 +70,7 @@ class ChannelFragment : BaseFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = FragmentChannelBinding.inflate(layoutInflater, container, false)
+        _binding = FragmentChannelBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -87,49 +90,55 @@ class ChannelFragment : BaseFragment() {
             refreshChannel()
         }
 
-        binding.channelScrollView.viewTreeObserver
-            .addOnScrollChangedListener {
-                if (!binding.channelScrollView.canScrollVertically(1)) {
-                    try {
-                        onScrollEnd.invoke()
-                    } catch (e: Exception) {
-                        Log.e("tabs failed", e.toString())
-                    }
+        binding.channelScrollView.viewTreeObserver.addOnScrollChangedListener {
+            if (_binding?.channelScrollView?.canScrollVertically(1) == false) {
+                try {
+                    onScrollEnd()
+                } catch (e: Exception) {
+                    Log.e("tabs failed", e.toString())
                 }
             }
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 
     private fun fetchChannel() {
-        lifecycleScope.launchWhenCreated {
-            val response = try {
-                if (channelId != null) {
-                    RetrofitInstance.api.getChannel(channelId!!)
-                } else {
-                    RetrofitInstance.api.getChannelByName(channelName!!)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.CREATED) {
+                val response = try {
+                    withContext(Dispatchers.IO) {
+                        if (channelId != null) {
+                            RetrofitInstance.api.getChannel(channelId!!)
+                        } else {
+                            RetrofitInstance.api.getChannelByName(channelName!!)
+                        }
+                    }
+                } catch (e: IOException) {
+                    binding.channelRefresh.isRefreshing = false
+                    Log.e(TAG(), "IOException, you might not have internet connection")
+                    return@repeatOnLifecycle
+                } catch (e: HttpException) {
+                    binding.channelRefresh.isRefreshing = false
+                    Log.e(TAG(), "HttpException, unexpected response")
+                    return@repeatOnLifecycle
                 }
-            } catch (e: IOException) {
-                binding.channelRefresh.isRefreshing = false
-                Log.e(TAG(), "IOException, you might not have internet connection")
-                return@launchWhenCreated
-            } catch (e: HttpException) {
-                binding.channelRefresh.isRefreshing = false
-                Log.e(TAG(), "HttpException, unexpected response")
-                return@launchWhenCreated
-            }
-            // needed if the channel gets loaded by the ID
-            channelId = response.id
-            channelName = response.name
-            val shareData = ShareData(currentChannel = response.name)
+                // needed if the channel gets loaded by the ID
+                channelId = response.id
+                channelName = response.name
+                val shareData = ShareData(currentChannel = response.name)
 
-            onScrollEnd = {
-                fetchChannelNextPage()
-            }
+                onScrollEnd = {
+                    fetchChannelNextPage()
+                }
 
-            // fetch and update the subscription status
-            isSubscribed = SubscriptionHelper.isSubscribed(channelId!!)
-            if (isSubscribed == null) return@launchWhenCreated
+                // fetch and update the subscription status
+                isSubscribed = SubscriptionHelper.isSubscribed(channelId!!)
+                if (isSubscribed == null) return@repeatOnLifecycle
 
-            runOnUiThread {
                 binding.channelSubscribe.setupSubscriptionButton(
                     channelId,
                     channelName,
@@ -144,13 +153,11 @@ class ChannelFragment : BaseFragment() {
                     )
                     shareDialog.show(childFragmentManager, ShareDialog::class.java.name)
                 }
-            }
 
-            nextPage = response.nextpage
-            isLoading = false
-            binding.channelRefresh.isRefreshing = false
+                nextPage = response.nextpage
+                isLoading = false
+                binding.channelRefresh.isRefreshing = false
 
-            runOnUiThread {
                 binding.channelScrollView.visibility = View.VISIBLE
                 binding.channelName.text = response.name
                 if (response.verified) {
@@ -165,10 +172,10 @@ class ChannelFragment : BaseFragment() {
                     R.string.subscribers,
                     response.subscriberCount.formatShort()
                 )
-                if (response.description.isBlank()) {
+                if (response.description.orEmpty().isBlank()) {
                     binding.channelDescription.visibility = View.GONE
                 } else {
-                    binding.channelDescription.text = response.description.trim()
+                    binding.channelDescription.text = response.description.orEmpty().trim()
                 }
 
                 binding.channelDescription.setOnClickListener {
@@ -186,9 +193,9 @@ class ChannelFragment : BaseFragment() {
                     forceMode = VideosAdapter.Companion.ForceMode.CHANNEL
                 )
                 binding.channelRecView.adapter = channelAdapter
-            }
 
-            setupTabs(response.tabs)
+                setupTabs(response.tabs)
+            }
         }
     }
 
@@ -250,22 +257,24 @@ class ChannelFragment : BaseFragment() {
     }
 
     private fun fetchChannelNextPage() {
-        fun run() {
-            if (nextPage == null || isLoading) return
-            isLoading = true
-            binding.channelRefresh.isRefreshing = true
+        if (nextPage == null || isLoading) return
+        isLoading = true
+        binding.channelRefresh.isRefreshing = true
 
-            lifecycleScope.launchWhenCreated {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.CREATED) {
                 val response = try {
-                    RetrofitInstance.api.getChannelNextPage(channelId!!, nextPage!!)
+                    withContext(Dispatchers.IO) {
+                        RetrofitInstance.api.getChannelNextPage(channelId!!, nextPage!!)
+                    }
                 } catch (e: IOException) {
                     binding.channelRefresh.isRefreshing = false
                     Log.e(TAG(), "IOException, you might not have internet connection")
-                    return@launchWhenCreated
+                    return@repeatOnLifecycle
                 } catch (e: HttpException) {
                     binding.channelRefresh.isRefreshing = false
                     Log.e(TAG(), "HttpException, unexpected response," + e.response())
-                    return@launchWhenCreated
+                    return@repeatOnLifecycle
                 }
                 nextPage = response.nextpage
                 channelAdapter?.insertItems(response.relatedStreams)
@@ -273,7 +282,6 @@ class ChannelFragment : BaseFragment() {
                 binding.channelRefresh.isRefreshing = false
             }
         }
-        run()
     }
 
     private fun fetchTabNextPage(

@@ -4,19 +4,18 @@ import android.annotation.SuppressLint
 import android.app.Dialog
 import android.os.Bundle
 import android.widget.Toast
-import androidx.core.app.ActivityCompat
 import androidx.fragment.app.DialogFragment
 import com.github.libretube.R
 import com.github.libretube.databinding.DialogLogoutBinding
 import com.github.libretube.helpers.PreferenceHelper
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
-class LogoutDialog : DialogFragment() {
-    private lateinit var binding: DialogLogoutBinding
-
+class LogoutDialog(
+    private val onLogout: () -> Unit
+) : DialogFragment() {
     @SuppressLint("SetTextI18n")
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        binding = DialogLogoutBinding.inflate(layoutInflater)
+        val binding = DialogLogoutBinding.inflate(layoutInflater)
 
         val user = PreferenceHelper.getUsername()
 
@@ -24,9 +23,9 @@ class LogoutDialog : DialogFragment() {
             binding.user.text.toString() + " (" + user + ")"
         binding.logout.setOnClickListener {
             Toast.makeText(context, R.string.loggedout, Toast.LENGTH_SHORT).show()
-            PreferenceHelper.setToken("")
+
+            onLogout.invoke()
             dialog?.dismiss()
-            ActivityCompat.recreate(requireActivity())
         }
 
         return MaterialAlertDialogBuilder(requireContext())

@@ -1,31 +1,47 @@
 package com.github.libretube.ui.fragments
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.view.children
+import androidx.core.view.isGone
 import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.github.libretube.R
 import com.github.libretube.api.obj.StreamItem
 import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.databinding.FragmentSubscriptionsBinding
+import com.github.libretube.db.DatabaseHolder
+import com.github.libretube.db.obj.SubscriptionGroup
+import com.github.libretube.extensions.toID
 import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.ui.adapters.LegacySubscriptionAdapter
 import com.github.libretube.ui.adapters.SubscriptionChannelAdapter
 import com.github.libretube.ui.adapters.VideosAdapter
-import com.github.libretube.ui.base.BaseFragment
+import com.github.libretube.ui.dialogs.ChannelGroupsDialog
 import com.github.libretube.ui.models.SubscriptionsViewModel
 import com.github.libretube.ui.sheets.BaseBottomSheet
 import com.github.libretube.util.PlayingQueue
+import com.google.android.material.chip.Chip
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
-class SubscriptionsFragment : BaseFragment() {
-    private lateinit var binding: FragmentSubscriptionsBinding
+class SubscriptionsFragment : Fragment() {
+    private var _binding: FragmentSubscriptionsBinding? = null
+    private val binding get() = _binding!!
+
     private val viewModel: SubscriptionsViewModel by activityViewModels()
+    private var channelGroups: List<SubscriptionGroup> = listOf()
+    private var selectedFilterGroup: Int = 0
 
     var subscriptionsAdapter: VideosAdapter? = null
     private var selectedSortOrder = PreferenceHelper.getInt(PreferenceKeys.FEED_SORT_ORDER, 0)
@@ -44,7 +60,7 @@ class SubscriptionsFragment : BaseFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = FragmentSubscriptionsBinding.inflate(layoutInflater, container, false)
+        _binding = FragmentSubscriptionsBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -55,7 +71,6 @@ class SubscriptionsFragment : BaseFragment() {
             PreferenceKeys.SAVE_FEED,
             false
         )
-
 
         // update the text according to the current order and filter
         binding.sortTV.text = resources.getStringArray(R.array.sortOptions)[selectedSortOrder]
@@ -80,14 +95,12 @@ class SubscriptionsFragment : BaseFragment() {
         }
 
         viewModel.videoFeed.observe(viewLifecycleOwner) {
-            if (!isShowingFeed()) return@observe
-            if (it == null) return@observe
+            if (!isShowingFeed() || it == null) return@observe
             showFeed()
         }
 
         viewModel.subscriptions.observe(viewLifecycleOwner) {
-            if (isShowingFeed()) return@observe
-            if (it == null) return@observe
+            if (isShowingFeed() || it == null) return@observe
             showSubscriptions()
         }
 
@@ -138,16 +151,56 @@ class SubscriptionsFragment : BaseFragment() {
             }
         }
 
-        binding.scrollviewSub.viewTreeObserver
-            .addOnScrollChangedListener {
-                if (!binding.scrollviewSub.canScrollVertically(1)) {
-                    // scroll view is at bottom
-                    if (viewModel.videoFeed.value == null) return@addOnScrollChangedListener
-                    binding.subRefresh.isRefreshing = true
-                    subscriptionsAdapter?.updateItems()
-                    binding.subRefresh.isRefreshing = false
-                }
+        binding.scrollviewSub.viewTreeObserver.addOnScrollChangedListener {
+            val binding = _binding
+            if (binding?.scrollviewSub?.canScrollVertically(1) == false &&
+                viewModel.videoFeed.value != null // scroll view is at bottom
+            ) {
+                binding.subRefresh.isRefreshing = true
+                subscriptionsAdapter?.updateItems()
+                binding.subRefresh.isRefreshing = false
             }
+        }
+
+        lifecycleScope.launch {
+            initChannelGroups()
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
+    @SuppressLint("InflateParams")
+    private suspend fun initChannelGroups() {
+        channelGroups = DatabaseHolder.Database.subscriptionGroupsDao().getAll()
+
+        binding.chipAll.isChecked = true
+        binding.channelGroups.removeAllViews()
+
+        binding.channelGroups.addView(binding.chipAll)
+        channelGroups.forEach { group ->
+            val chip = layoutInflater.inflate(R.layout.filter_chip, null) as Chip
+            chip.apply {
+                id = View.generateViewId()
+                isCheckable = true
+                text = group.name
+            }
+
+            binding.channelGroups.addView(chip)
+        }
+
+        binding.channelGroups.setOnCheckedStateChangeListener { group, checkedIds ->
+            selectedFilterGroup = group.children.indexOfFirst { it.id == checkedIds.first() }
+            showFeed()
+        }
+
+        binding.editGroups.setOnClickListener {
+            ChannelGroupsDialog(channelGroups.toMutableList()) {
+                lifecycleScope.launch { initChannelGroups() }
+            }.show(childFragmentManager, null)
+        }
     }
 
     private fun showFeed() {
@@ -188,10 +241,10 @@ class SubscriptionsFragment : BaseFragment() {
         }
 
         binding.subChannelsContainer.visibility = View.GONE
-        binding.subFeedContainer.visibility =
-            if (viewModel.videoFeed.value!!.isEmpty()) View.GONE else View.VISIBLE
-        binding.emptyFeed.visibility =
-            if (viewModel.videoFeed.value!!.isEmpty()) View.VISIBLE else View.GONE
+
+        val notLoaded = viewModel.videoFeed.value.isNullOrEmpty()
+        binding.subFeedContainer.isGone = notLoaded
+        binding.emptyFeed.isVisible = notLoaded
 
         binding.subProgress.visibility = View.GONE
         subscriptionsAdapter = VideosAdapter(
@@ -202,6 +255,20 @@ class SubscriptionsFragment : BaseFragment() {
         binding.subFeed.adapter = subscriptionsAdapter
 
         PreferenceHelper.updateLastFeedWatchedTime()
+    }
+
+    private fun removeWatchVideosFromFeed(streams: List<StreamItem>): List<StreamItem> {
+        return runBlocking {
+            streams.filter {
+                runBlocking(Dispatchers.IO) {
+                    runCatching {
+                        val watchPosition = DatabaseHolder.Database.watchPositionDao()
+                            .findById(it.url.orEmpty().toID())?.position?.div(1000)
+                        (watchPosition ?: 0) < 0.9 * (it.duration ?: 1L)
+                    }.getOrDefault(false)
+                }
+            }
+        }
     }
 
     private fun showSubscriptions() {
@@ -236,10 +303,10 @@ class SubscriptionsFragment : BaseFragment() {
         }
 
         binding.subFeedContainer.visibility = View.GONE
-        binding.subChannelsContainer.visibility =
-            if (viewModel.subscriptions.value!!.isEmpty()) View.GONE else View.VISIBLE
-        binding.emptyFeed.visibility =
-            if (viewModel.subscriptions.value!!.isEmpty()) View.VISIBLE else View.GONE
+
+        val notLoaded = viewModel.subscriptions.value.isNullOrEmpty()
+        binding.subChannelsContainer.isGone = notLoaded
+        binding.emptyFeed.isVisible = notLoaded
     }
 
     private fun isShowingFeed(): Boolean {

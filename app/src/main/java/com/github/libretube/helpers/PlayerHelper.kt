@@ -2,16 +2,16 @@ package com.github.libretube.helpers
 
 import android.app.Activity
 import android.app.PendingIntent
-import android.app.RemoteAction
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.graphics.drawable.Icon
-import android.os.Build
 import android.view.accessibility.CaptioningManager
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
+import androidx.core.app.PendingIntentCompat
+import androidx.core.app.RemoteActionCompat
+import androidx.core.content.getSystemService
+import androidx.core.graphics.drawable.IconCompat
 import com.github.libretube.R
 import com.github.libretube.api.obj.PipedStream
 import com.github.libretube.api.obj.Segment
@@ -25,7 +25,6 @@ import com.google.android.exoplayer2.LoadControl
 import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ui.CaptionStyleCompat
-import com.google.android.exoplayer2.video.VideoSize
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
@@ -77,8 +76,7 @@ object PlayerHelper {
 
     // get the system default caption style
     fun getCaptionStyle(context: Context): CaptionStyleCompat {
-        val captioningManager =
-            context.getSystemService(Context.CAPTIONING_SERVICE) as CaptioningManager
+        val captioningManager = context.getSystemService<CaptioningManager>()!!
         return if (!captioningManager.isEnabled) {
             // system captions are disabled, using android default captions style
             CaptionStyleCompat.DEFAULT
@@ -152,7 +150,7 @@ object PlayerHelper {
         return categories
     }
 
-    fun getOrientation(videoSize: VideoSize): Int {
+    fun getOrientation(videoWidth: Int, videoHeight: Int): Int {
         val fullscreenOrientationPref = PreferenceHelper.getString(
             PreferenceKeys.FULLSCREEN_ORIENTATION,
             "ratio"
@@ -161,7 +159,7 @@ object PlayerHelper {
         return when (fullscreenOrientationPref) {
             "ratio" -> {
                 // probably a youtube shorts video
-                if (videoSize.height > videoSize.width) {
+                if (videoHeight > videoWidth) {
                     ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
                 } // a video with normal aspect ratio
                 else {
@@ -274,6 +272,12 @@ object PlayerHelper {
             true
         )
 
+    val autoPlayCountdown: Boolean
+        get() = PreferenceHelper.getBoolean(
+            PreferenceKeys.AUTOPLAY_COUNTDOWN,
+            false
+        )
+
     val seekIncrement: Long
         get() = PreferenceHelper.getString(
             PreferenceKeys.SEEK_INCREMENT,
@@ -316,6 +320,12 @@ object PlayerHelper {
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.PLAYER_SWIPE_CONTROLS,
             true
+        )
+
+    val fullscreenGesturesEnabled: Boolean
+        get() = PreferenceHelper.getBoolean(
+            PreferenceKeys.FULLSCREEN_GESTURES,
+            false
         )
 
     val pinchGestureEnabled: Boolean
@@ -373,26 +383,20 @@ object PlayerHelper {
         return context.packageName + "." + ACTION_MEDIA_CONTROL
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun getPendingIntent(activity: Activity, code: Int): PendingIntent {
-        return PendingIntent.getBroadcast(
-            activity,
-            code,
-            Intent(getIntentActon(activity)).putExtra(CONTROL_TYPE, code),
-            PendingIntent.FLAG_IMMUTABLE
-        )
+        val intent = Intent(getIntentActon(activity)).putExtra(CONTROL_TYPE, code)
+        return PendingIntentCompat.getBroadcast(activity, code, intent, 0, false)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun getRemoteAction(
         activity: Activity,
         id: Int,
         @StringRes title: Int,
         event: PlayerEvent
-    ): RemoteAction {
+    ): RemoteActionCompat {
         val text = activity.getString(title)
-        return RemoteAction(
-            Icon.createWithResource(activity, id),
+        return RemoteActionCompat(
+            IconCompat.createWithResource(activity, id),
             text,
             text,
             getPendingIntent(activity, event.value)
@@ -402,8 +406,7 @@ object PlayerHelper {
     /**
      * Create controls to use in the PiP window
      */
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun getPiPModeActions(activity: Activity, isPlaying: Boolean, isOfflinePlayer: Boolean = false): ArrayList<RemoteAction> {
+    fun getPiPModeActions(activity: Activity, isPlaying: Boolean): List<RemoteActionCompat> {
         val audioModeAction = getRemoteAction(
             activity,
             R.drawable.ic_headphones,
@@ -438,12 +441,10 @@ object PlayerHelper {
             R.string.forward,
             PlayerEvent.Forward
         )
-        return if (
-            !isOfflinePlayer && alternativePiPControls
-        ) {
-            arrayListOf(audioModeAction, playPauseAction, skipNextAction)
+        return if (alternativePiPControls) {
+            listOf(audioModeAction, playPauseAction, skipNextAction)
         } else {
-            arrayListOf(rewindAction, playPauseAction, forwardAction)
+            listOf(rewindAction, playPauseAction, forwardAction)
         }
     }
 

@@ -1,16 +1,14 @@
 package com.github.libretube.services
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Intent
 import android.os.Binder
-import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
@@ -25,27 +23,29 @@ import com.github.libretube.constants.PLAYER_NOTIFICATION_ID
 import com.github.libretube.db.DatabaseHolder.Database
 import com.github.libretube.db.obj.WatchPosition
 import com.github.libretube.extensions.TAG
-import com.github.libretube.extensions.awaitQuery
-import com.github.libretube.extensions.query
 import com.github.libretube.extensions.toID
 import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.helpers.PlayerHelper.checkForSegments
 import com.github.libretube.helpers.PlayerHelper.loadPlaybackParams
+import com.github.libretube.helpers.ProxyHelper
+import com.github.libretube.obj.PlayerNotificationData
 import com.github.libretube.util.NowPlayingNotification
 import com.github.libretube.util.PlayingQueue
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 
 /**
  * Loads the selected videos audio in background mode with a notification area.
  */
-class BackgroundMode : LifecycleService() {
+class OnlinePlayerService : LifecycleService() {
     /**
      * VideoId of the video
      */
@@ -98,24 +98,14 @@ class BackgroundMode : LifecycleService() {
      */
     override fun onCreate() {
         super.onCreate()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                BACKGROUND_CHANNEL_ID,
-                getString(R.string.background_mode),
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
-            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
 
-            // see https://developer.android.com/reference/android/app/Service#startForeground(int,%20android.app.Notification)
-            val notification: Notification = Notification.Builder(this, BACKGROUND_CHANNEL_ID)
-                .setContentTitle(getString(R.string.app_name))
-                .setContentText(getString(R.string.playingOnBackground))
-                .setSmallIcon(R.drawable.ic_launcher_lockscreen)
-                .build()
+        val notification = NotificationCompat.Builder(this, BACKGROUND_CHANNEL_ID)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(getString(R.string.playingOnBackground))
+            .setSmallIcon(R.drawable.ic_launcher_lockscreen)
+            .build()
 
-            startForeground(PLAYER_NOTIFICATION_ID, notification)
-        }
+        startForeground(PLAYER_NOTIFICATION_ID, notification)
     }
 
     /**
@@ -154,8 +144,8 @@ class BackgroundMode : LifecycleService() {
             // indicator that a new video is getting loaded
             this.streams ?: return@let
 
-            query {
-                Database.watchPositionDao().insertAll(watchPosition)
+            CoroutineScope(Dispatchers.IO).launch {
+                Database.watchPositionDao().insert(watchPosition)
             }
         }
         handler.postDelayed(this::updateWatchPosition, 500)
@@ -198,10 +188,19 @@ class BackgroundMode : LifecycleService() {
         setMediaItem()
 
         // create the notification
-        if (!this@BackgroundMode::nowPlayingNotification.isInitialized) {
-            nowPlayingNotification = NowPlayingNotification(this@BackgroundMode, player!!, true)
+        if (!this@OnlinePlayerService::nowPlayingNotification.isInitialized) {
+            nowPlayingNotification = NowPlayingNotification(
+                this@OnlinePlayerService,
+                player!!,
+                true
+            )
         }
-        nowPlayingNotification.updatePlayerNotification(videoId, streams!!)
+        val playerNotificationData = PlayerNotificationData(
+            streams?.title,
+            streams?.uploader,
+            streams?.thumbnailUrl
+        )
+        nowPlayingNotification.updatePlayerNotification(videoId, playerNotificationData)
 
         player?.apply {
             playWhenReady = playWhenReadyPlayer
@@ -213,7 +212,7 @@ class BackgroundMode : LifecycleService() {
             player?.seekTo(seekToPosition)
         } else if (PlayerHelper.watchPositionsAudio) {
             runCatching {
-                val watchPosition = awaitQuery {
+                val watchPosition = runBlocking {
                     Database.watchPositionDao().findById(videoId)
                 }
                 streams?.duration?.let {
@@ -234,6 +233,7 @@ class BackgroundMode : LifecycleService() {
         if (player != null) return
 
         player = ExoPlayer.Builder(this)
+            .setUsePlatformDiagnostics(false)
             .setHandleAudioBecomingNoisy(true)
             .setAudioAttributes(PlayerHelper.getAudioAttributes(), true)
             .setLoadControl(PlayerHelper.getLoadControl())
@@ -267,7 +267,7 @@ class BackgroundMode : LifecycleService() {
                 // show a toast on errors
                 Handler(Looper.getMainLooper()).post {
                     Toast.makeText(
-                        this@BackgroundMode.applicationContext,
+                        this@OnlinePlayerService.applicationContext,
                         error.localizedMessage,
                         Toast.LENGTH_SHORT
                     ).show()
@@ -303,7 +303,7 @@ class BackgroundMode : LifecycleService() {
         }
 
         val mediaItem = MediaItem.Builder()
-            .setUri(uri)
+            .setUri(ProxyHelper.rewriteUrl(uri))
             .build()
         player?.setMediaItem(mediaItem)
     }
@@ -359,10 +359,11 @@ class BackgroundMode : LifecycleService() {
     }
 
     /**
-     * destroy the [BackgroundMode] foreground service
+     * destroy the [OnlinePlayerService] foreground service
      */
     override fun onDestroy() {
-        // clear the playing queue
+        // clear and reset the playing queue
+        PlayingQueue.clear()
         PlayingQueue.resetToDefaults()
 
         if (this::nowPlayingNotification.isInitialized) nowPlayingNotification.destroySelfAndPlayer()
@@ -378,7 +379,7 @@ class BackgroundMode : LifecycleService() {
 
     inner class LocalBinder : Binder() {
         // Return this instance of [BackgroundMode] so clients can call public methods
-        fun getService(): BackgroundMode = this@BackgroundMode
+        fun getService(): OnlinePlayerService = this@OnlinePlayerService
     }
 
     override fun onBind(intent: Intent): IBinder {

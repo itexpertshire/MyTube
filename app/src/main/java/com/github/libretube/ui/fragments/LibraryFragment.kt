@@ -7,9 +7,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -19,19 +23,21 @@ import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.databinding.FragmentLibraryBinding
 import com.github.libretube.db.DatabaseHolder
 import com.github.libretube.extensions.TAG
-import com.github.libretube.extensions.awaitQuery
 import com.github.libretube.extensions.dpToPx
 import com.github.libretube.helpers.NavBarHelper
 import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.ui.adapters.PlaylistBookmarkAdapter
 import com.github.libretube.ui.adapters.PlaylistsAdapter
-import com.github.libretube.ui.base.BaseFragment
 import com.github.libretube.ui.dialogs.CreatePlaylistDialog
 import com.github.libretube.ui.models.PlayerViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class LibraryFragment : BaseFragment() {
+class LibraryFragment : Fragment() {
+    private var _binding: FragmentLibraryBinding? = null
+    private val binding get() = _binding!!
 
-    private lateinit var binding: FragmentLibraryBinding
     private val playerViewModel: PlayerViewModel by activityViewModels()
 
     override fun onCreateView(
@@ -39,7 +45,7 @@ class LibraryFragment : BaseFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = FragmentLibraryBinding.inflate(layoutInflater, container, false)
+        _binding = FragmentLibraryBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -90,15 +96,24 @@ class LibraryFragment : BaseFragment() {
         }
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
     private fun initBookmarks() {
-        val bookmarks = awaitQuery {
-            DatabaseHolder.Database.playlistBookmarkDao().getAll()
+        lifecycleScope.launch {
+            val bookmarks = withContext(Dispatchers.IO) {
+                DatabaseHolder.Database.playlistBookmarkDao().getAll()
+            }
+
+            val binding = _binding ?: return@launch
+
+            binding.bookmarksCV.isVisible = bookmarks.isNotEmpty()
+            if (bookmarks.isNotEmpty()) {
+                binding.bookmarksRecView.adapter = PlaylistBookmarkAdapter(bookmarks)
+            }
         }
-
-        binding.bookmarksCV.visibility = if (bookmarks.isEmpty()) View.GONE else View.VISIBLE
-        if (bookmarks.isEmpty()) return
-
-        binding.bookmarksRecView.adapter = PlaylistBookmarkAdapter(bookmarks)
     }
 
     private fun updateFABMargin(isMiniPlayerVisible: Boolean) {
@@ -111,49 +126,49 @@ class LibraryFragment : BaseFragment() {
 
     private fun fetchPlaylists() {
         binding.playlistRefresh.isRefreshing = true
-        lifecycleScope.launchWhenCreated {
-            var playlists = try {
-                PlaylistsHelper.getPlaylists()
-            } catch (e: Exception) {
-                Log.e(TAG(), e.toString())
-                Toast.makeText(context, R.string.unknown_error, Toast.LENGTH_SHORT).show()
-                return@launchWhenCreated
-            } finally {
-                binding.playlistRefresh.isRefreshing = false
-            }
-            if (playlists.isNotEmpty()) {
-                playlists = when (
-                    PreferenceHelper.getString(
-                        PreferenceKeys.PLAYLISTS_ORDER,
-                        "recent"
-                    )
-                ) {
-                    "recent" -> playlists
-                    "recent_reversed" -> playlists.reversed()
-                    "name" -> playlists.sortedBy { it.name?.lowercase() }
-                    "name_reversed" -> playlists.sortedBy { it.name?.lowercase() }.reversed()
-                    else -> playlists
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.CREATED) {
+                var playlists = try {
+                    withContext(Dispatchers.IO) {
+                        PlaylistsHelper.getPlaylists()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG(), e.toString())
+                    Toast.makeText(context, R.string.unknown_error, Toast.LENGTH_SHORT).show()
+                    return@repeatOnLifecycle
                 }
 
-                val playlistsAdapter = PlaylistsAdapter(
-                    playlists.toMutableList(),
-                    PlaylistsHelper.getPrivatePlaylistType()
-                )
+                val binding = _binding ?: return@repeatOnLifecycle
+                binding.playlistRefresh.isRefreshing = false
 
-                // listen for playlists to become deleted
-                playlistsAdapter.registerAdapterDataObserver(object :
-                    RecyclerView.AdapterDataObserver() {
-                    override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-                        binding.nothingHere.visibility =
-                            if (playlistsAdapter.itemCount == 0) View.VISIBLE else View.GONE
-                        super.onItemRangeRemoved(positionStart, itemCount)
+                if (playlists.isNotEmpty()) {
+                    playlists = when (
+                        PreferenceHelper.getString(PreferenceKeys.PLAYLISTS_ORDER, "recent")
+                    ) {
+                        "recent" -> playlists
+                        "recent_reversed" -> playlists.reversed()
+                        "name" -> playlists.sortedBy { it.name?.lowercase() }
+                        "name_reversed" -> playlists.sortedBy { it.name?.lowercase() }.reversed()
+                        else -> playlists
                     }
-                })
 
-                binding.nothingHere.visibility = View.GONE
-                binding.playlistRecView.adapter = playlistsAdapter
-            } else {
-                runOnUiThread {
+                    val playlistsAdapter = PlaylistsAdapter(
+                        playlists.toMutableList(),
+                        PlaylistsHelper.getPrivatePlaylistType()
+                    )
+
+                    // listen for playlists to become deleted
+                    playlistsAdapter.registerAdapterDataObserver(object :
+                        RecyclerView.AdapterDataObserver() {
+                        override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+                            _binding?.nothingHere?.isVisible = playlistsAdapter.itemCount == 0
+                            super.onItemRangeRemoved(positionStart, itemCount)
+                        }
+                    })
+
+                    binding.nothingHere.visibility = View.GONE
+                    binding.playlistRecView.adapter = playlistsAdapter
+                } else {
                     binding.nothingHere.visibility = View.VISIBLE
                 }
             }

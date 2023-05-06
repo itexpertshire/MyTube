@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -13,6 +12,7 @@ import android.view.ViewGroup
 import android.widget.ScrollView
 import androidx.activity.addCallback
 import androidx.appcompat.widget.SearchView
+import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.os.bundleOf
 import androidx.core.view.children
 import androidx.core.widget.NestedScrollView
@@ -23,6 +23,7 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.github.libretube.R
+import com.github.libretube.compat.PictureInPictureCompat
 import com.github.libretube.constants.IntentData
 import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.databinding.ActivityMainBinding
@@ -34,7 +35,6 @@ import com.github.libretube.helpers.NetworkHelper
 import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.helpers.ThemeHelper
 import com.github.libretube.helpers.WindowHelper
-import com.github.libretube.services.BackgroundMode
 import com.github.libretube.services.ClosingService
 import com.github.libretube.ui.base.BaseActivity
 import com.github.libretube.ui.dialogs.ErrorDialog
@@ -59,7 +59,7 @@ class MainActivity : BaseActivity() {
     lateinit var searchView: SearchView
     private lateinit var searchItem: MenuItem
 
-    val windowHelper = WindowHelper(this)
+    //val windowHelper = WindowHelper(this)
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -267,8 +267,8 @@ class MainActivity : BaseActivity() {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
-        menu?.findItem(R.id.action_audio)?.isVisible = BackgroundHelper
-            .isServiceRunning(this, BackgroundMode::class.java)
+        menu?.findItem(R.id.action_audio)?.isVisible =
+            BackgroundHelper.isBackgroundServiceRunning(this)
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -301,13 +301,12 @@ class MainActivity : BaseActivity() {
                 }
 
                 // prevent malicious navigation when the search view is getting collapsed
-                if (navController.currentDestination?.id in listOf(
-                        R.id.searchResultFragment,
-                        R.id.channelFragment,
-                        R.id.playlistFragment
-                    ) &&
-                    (newText == null || newText == "")
-                ) {
+                val destIds = listOf(
+                    R.id.searchResultFragment,
+                    R.id.channelFragment,
+                    R.id.playlistFragment
+                )
+                if (navController.currentDestination?.id in destIds && newText.isNullOrEmpty()) {
                     return false
                 }
 
@@ -374,7 +373,7 @@ class MainActivity : BaseActivity() {
                 true
             }
             R.id.action_audio -> {
-                navController.navigate(R.id.audioPlayerFragment)
+                NavigationHelper.startAudioPlayer(this)
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -383,9 +382,7 @@ class MainActivity : BaseActivity() {
 
     private fun loadIntentData() {
         // If activity is running in PiP mode, then start it in front.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
-            isInPictureInPictureMode
-        ) {
+        if (PictureInPictureCompat.isInPictureInPictureMode(this)) {
             val nIntent = Intent(this, MainActivity::class.java)
             nIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             startActivity(nIntent)
@@ -399,7 +396,7 @@ class MainActivity : BaseActivity() {
         intent?.getStringExtra(IntentData.channelId)?.let {
             navController.navigate(
                 R.id.channelFragment,
-                bundleOf(IntentData.channelName to it)
+                bundleOf(IntentData.channelId to it)
             )
         }
         intent?.getStringExtra(IntentData.channelName)?.let {
@@ -422,17 +419,18 @@ class MainActivity : BaseActivity() {
             )
         }
 
-        when (intent?.getStringExtra("fragmentToOpen")) {
-            "home" ->
-                navController.navigate(R.id.homeFragment)
-            "trends" ->
-                navController.navigate(R.id.trendsFragment)
-            "subscriptions" ->
-                navController.navigate(R.id.subscriptionsFragment)
-            "library" ->
-                navController.navigate(R.id.libraryFragment)
-            "downloads" ->
-                navController.navigate(R.id.downloadsFragment)
+        intent?.getStringExtra("fragmentToOpen")?.let {
+            if (it != "downloads") { // Not a shortcut
+                ShortcutManagerCompat.reportShortcutUsed(this, it)
+            }
+
+            when (it) {
+                "home" -> navController.navigate(R.id.homeFragment)
+                "trends" -> navController.navigate(R.id.trendsFragment)
+                "subscriptions" -> navController.navigate(R.id.subscriptionsFragment)
+                "library" -> navController.navigate(R.id.libraryFragment)
+                "downloads" -> navController.navigate(R.id.downloadsFragment)
+            }
         }
         if (intent?.getBooleanExtra(IntentData.downloading, false) == true) {
             (supportFragmentManager.fragments.find { it is NavHostFragment })
@@ -474,8 +472,8 @@ class MainActivity : BaseActivity() {
         super.onConfigurationChanged(newConfig)
 
         when (newConfig.orientation) {
-            Configuration.ORIENTATION_PORTRAIT -> windowHelper.unsetFullscreen()
-            Configuration.ORIENTATION_LANDSCAPE -> windowHelper.setFullscreen()
+            Configuration.ORIENTATION_PORTRAIT -> WindowHelper.toggleFullscreen(this, false)
+            Configuration.ORIENTATION_LANDSCAPE -> WindowHelper.toggleFullscreen(this, true)
         }
     }
 

@@ -1,8 +1,6 @@
 package com.github.libretube.ui.adapters
 
-import android.annotation.SuppressLint
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -52,7 +50,7 @@ class SearchAdapter : ListAdapter<ContentItem, SearchViewHolder>(SearchCallback)
         val playlistRowBinding = holder.playlistRowBinding
 
         if (videoRowBinding != null) {
-            bindWatch(searchItem, videoRowBinding)
+            bindVideo(searchItem, videoRowBinding)
         } else if (channelRowBinding != null) {
             bindChannel(searchItem, channelRowBinding)
         } else if (playlistRowBinding != null) {
@@ -69,21 +67,23 @@ class SearchAdapter : ListAdapter<ContentItem, SearchViewHolder>(SearchCallback)
         }
     }
 
-    private fun bindWatch(item: ContentItem, binding: VideoRowBinding) {
+    private fun bindVideo(item: ContentItem, binding: VideoRowBinding) {
         binding.apply {
             ImageHelper.loadImage(item.thumbnail, thumbnail)
             thumbnailDuration.setFormattedDuration(item.duration, item.isShort)
             ImageHelper.loadImage(item.uploaderAvatar, channelImage)
             videoTitle.text = item.title
-            val viewsString = if (item.views != -1L) item.views.formatShort() else ""
-            val uploadDate = item.uploadedDate.orEmpty()
-            videoInfo.text =
-                if (viewsString.isNotEmpty() && uploadDate.isNotEmpty()) {
-                    "$viewsString • $uploadDate"
-                } else {
-                    viewsString + uploadDate
-                }
-            channelName.text = item.uploaderName
+            // only display the additional info if not in a channel tab
+            if (item.isShort != true || item.uploaderAvatar != null) {
+                val viewsString = item.views.takeIf { it != -1L }?.formatShort().orEmpty()
+                val uploadDate = item.uploadedDate?.let { " ${TextUtils.SEPARATOR} $it" }.orEmpty()
+                videoInfo.text = root.context.getString(
+                    R.string.normal_views,
+                    viewsString,
+                    uploadDate
+                )
+                channelName.text = item.uploaderName
+            }
             root.setOnClickListener {
                 NavigationHelper.navigateVideo(root.context, item.url)
             }
@@ -104,18 +104,22 @@ class SearchAdapter : ListAdapter<ContentItem, SearchViewHolder>(SearchCallback)
         }
     }
 
-    @SuppressLint("SetTextI18n")
     private fun bindChannel(item: ContentItem, binding: ChannelRowBinding) {
         binding.apply {
             ImageHelper.loadImage(item.thumbnail, searchChannelImage)
             searchChannelName.text = item.name
-            searchViews.text = root.context.getString(
-                R.string.subscribers,
-                item.subscribers.formatShort()
-            ) + TextUtils.SEPARATOR + root.context.getString(
-                R.string.videoCount,
-                item.videos.toString()
-            )
+
+            val subscribers = item.subscribers.formatShort()
+            searchViews.text = if (item.subscribers >= 0 && item.videos >= 0) {
+                root.context.getString(R.string.subscriberAndVideoCounts, subscribers, item.videos)
+            } else if (item.subscribers >= 0) {
+                root.context.getString(R.string.subscribers, subscribers)
+            } else if (item.videos >= 0) {
+                root.context.getString(R.string.videoCount, item.videos)
+            } else {
+                ""
+            }
+
             root.setOnClickListener {
                 NavigationHelper.navigateChannel(root.context, item.url)
             }
@@ -139,7 +143,7 @@ class SearchAdapter : ListAdapter<ContentItem, SearchViewHolder>(SearchCallback)
             root.setOnClickListener {
                 NavigationHelper.navigatePlaylist(root.context, item.url, PlaylistType.PUBLIC)
             }
-            deletePlaylist.visibility = View.GONE
+
             root.setOnLongClickListener {
                 val playlistId = item.url.toID()
                 val playlistName = item.name!!

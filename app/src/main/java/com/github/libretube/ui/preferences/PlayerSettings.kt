@@ -2,8 +2,6 @@ package com.github.libretube.ui.preferences
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.os.Build
-import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
@@ -11,6 +9,7 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.SwitchPreferenceCompat
 import com.github.libretube.R
+import com.github.libretube.compat.PictureInPictureCompat
 import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.helpers.LocaleHelper
 import com.github.libretube.helpers.PreferenceHelper
@@ -60,15 +59,22 @@ class PlayerSettings : BasePreferenceFragment() {
             true
         }
 
-        val pictureInPicture = findPreference<SwitchPreferenceCompat>(
-            PreferenceKeys.PICTURE_IN_PICTURE
-        )!!
+        val pictureInPicture =
+            findPreference<SwitchPreferenceCompat>(PreferenceKeys.PICTURE_IN_PICTURE)!!
+        pictureInPicture.isVisible =
+            PictureInPictureCompat.isPictureInPictureAvailable(requireContext())
+
         val pauseOnQuit = findPreference<SwitchPreferenceCompat>(PreferenceKeys.PAUSE_ON_QUIT)
-        pictureInPicture.isVisible = SDK_INT >= Build.VERSION_CODES.O
-        pauseOnQuit?.isVisible = !pictureInPicture.isVisible || !pictureInPicture.isChecked
+        val alternativePipControls =
+            findPreference<SwitchPreferenceCompat>(PreferenceKeys.ALTERNATIVE_PIP_CONTROLS)
+        val isPipEnabled = pictureInPicture.isVisible && pictureInPicture.isChecked
+        pauseOnQuit?.isVisible = !isPipEnabled
+        alternativePipControls?.isVisible = isPipEnabled
 
         pictureInPicture.setOnPreferenceChangeListener { _, newValue ->
-            pauseOnQuit?.isVisible = !(newValue as Boolean)
+            val isChecked = newValue as Boolean
+            pauseOnQuit?.isVisible = !isChecked
+            alternativePipControls?.isVisible = isChecked
             true
         }
 

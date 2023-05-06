@@ -16,6 +16,9 @@ interface WatchHistoryDao {
     suspend fun getVideo(ID: String): WatchHistoryItem
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(watchHistoryItem: WatchHistoryItem)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(watchHistoryItems: List<WatchHistoryItem>)
 
     @Delete

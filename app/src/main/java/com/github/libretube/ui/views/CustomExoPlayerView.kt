@@ -16,6 +16,10 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.os.postDelayed
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
+import androidx.core.view.marginStart
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.LifecycleOwner
 import com.github.libretube.R
@@ -24,12 +28,14 @@ import com.github.libretube.databinding.ExoStyledPlayerControlViewBinding
 import com.github.libretube.databinding.PlayerGestureControlsViewBinding
 import com.github.libretube.extensions.dpToPx
 import com.github.libretube.extensions.normalize
+import com.github.libretube.extensions.round
 import com.github.libretube.helpers.AudioHelper
 import com.github.libretube.helpers.BrightnessHelper
 import com.github.libretube.helpers.PlayerHelper
+import com.github.libretube.helpers.WindowHelper
 import com.github.libretube.obj.BottomSheetItem
-import com.github.libretube.ui.activities.MainActivity
 import com.github.libretube.ui.base.BaseActivity
+import com.github.libretube.ui.extensions.toggleSystemBars
 import com.github.libretube.ui.interfaces.OnlinePlayerOptions
 import com.github.libretube.ui.interfaces.PlayerGestureOptions
 import com.github.libretube.ui.interfaces.PlayerOptions
@@ -83,11 +89,11 @@ internal class CustomExoPlayerView(
 
     private var resizeModePref = PlayerHelper.resizeModePref
 
-    private val windowHelper
-        get() = (context as? MainActivity)?.windowHelper
+    private val activity
+        get() = context as BaseActivity
 
     private val supportFragmentManager
-        get() = (context as BaseActivity).supportFragmentManager
+        get() = activity.supportFragmentManager
 
     private fun toggleController() {
         if (isControllerFullyVisible) hideController() else showController()
@@ -198,12 +204,21 @@ internal class CustomExoPlayerView(
             override fun onScrubStop(timeBar: TimeBar, position: Long, canceled: Boolean) {}
         })
 
-        playerViewModel?.isFullscreen?.observe(viewLifecycleOwner!!) { isFullscreen ->
-            if (isFullscreen) {
-                windowHelper?.setFullscreen()
-            } else {
-                windowHelper?.unsetFullscreen()
+        setControllerVisibilityListener(
+            ControllerVisibilityListener { visibility ->
+                playerViewModel?.isFullscreen?.value?.let { isFullscreen ->
+                    if (!isFullscreen) return@let
+                    // Show status bar only not navigation bar if the player controls are visible and hide it otherwise
+                    activity.toggleSystemBars(
+                        types = WindowInsetsCompat.Type.statusBars(),
+                        showBars = visibility == View.VISIBLE
+                    )
+                }
             }
+        )
+
+        playerViewModel?.isFullscreen?.observe(viewLifecycleOwner!!) { isFullscreen ->
+            WindowHelper.toggleFullscreen(activity, isFullscreen)
         }
     }
 
@@ -229,7 +244,7 @@ internal class CustomExoPlayerView(
         // hide system bars if in fullscreen
         playerViewModel?.let {
             if (it.isFullscreen.value == true) {
-                windowHelper?.setFullscreen()
+                WindowHelper.toggleFullscreen(activity, true)
             }
             updateTopBarMargin()
         }
@@ -309,52 +324,52 @@ internal class CustomExoPlayerView(
                     context.getString(R.string.playback_speed),
                     R.drawable.ic_speed,
                     {
-                        "${
-                            player?.playbackParameters?.speed
-                                .toString()
-                                .replace(".0", "")
-                        }x"
+                        "${player?.playbackParameters?.speed?.round(2)}x"
                     }
                 ) {
                     onPlaybackSpeedClicked()
                 }
             )
 
-            if (playerOptionsInterface != null) {
-                items.add(
-                    BottomSheetItem(
-                        context.getString(R.string.quality),
-                        R.drawable.ic_hd,
-                        { "${player?.videoSize?.height}p" }
-                    ) {
-                        playerOptionsInterface?.onQualityClicked()
-                    }
-                )
-                items.add(
-                    BottomSheetItem(
-                        context.getString(R.string.audio_track),
-                        R.drawable.ic_audio,
-                        {
-                            trackSelector?.parameters?.preferredAudioLanguages?.firstOrNull()
-                        }
-                    ) {
-                        playerOptionsInterface?.onAudioStreamClicked()
-                    }
-                )
-                items.add(
-                    BottomSheetItem(
-                        context.getString(R.string.captions),
-                        R.drawable.ic_caption,
-                        {
-                            if (trackSelector != null && trackSelector!!.parameters.preferredTextLanguages.isNotEmpty()) {
-                                trackSelector!!.parameters.preferredTextLanguages[0]
-                            } else {
-                                context.getString(R.string.none)
+            playerOptionsInterface?.let {
+                items.addAll(
+                    listOf(
+                        BottomSheetItem(
+                            context.getString(R.string.quality),
+                            R.drawable.ic_hd,
+                            { "${player?.videoSize?.height}p" }
+                        ) {
+                            it.onQualityClicked()
+                        },
+                        BottomSheetItem(
+                            context.getString(R.string.audio_track),
+                            R.drawable.ic_audio,
+                            {
+                                trackSelector?.parameters?.preferredAudioLanguages?.firstOrNull()
                             }
+                        ) {
+                            it.onAudioStreamClicked()
+                        },
+                        BottomSheetItem(
+                            context.getString(R.string.captions),
+                            R.drawable.ic_caption,
+                            {
+                                if (trackSelector != null && trackSelector!!.parameters.preferredTextLanguages.isNotEmpty()) {
+                                    trackSelector!!.parameters.preferredTextLanguages[0]
+                                } else {
+                                    context.getString(R.string.none)
+                                }
+                            }
+                        ) {
+                            it.onCaptionsClicked()
+                        },
+                        BottomSheetItem(
+                            context.getString(R.string.stats_for_nerds),
+                            R.drawable.ic_info
+                        ) {
+                            it.onStatsClicked()
                         }
-                    ) {
-                        playerOptionsInterface?.onCaptionsClicked()
-                    }
+                    )
                 )
             }
 
@@ -366,14 +381,17 @@ internal class CustomExoPlayerView(
     // lock the player
     private fun lockPlayer(isLocked: Boolean) {
         // isLocked is the current (old) state of the player lock
-        val visibility = if (isLocked) View.VISIBLE else View.GONE
+        binding.exoTopBarRight.isVisible = isLocked
+        binding.exoCenterControls.isVisible = isLocked
+        binding.bottomBar.isVisible = isLocked
+        binding.closeImageButton.isVisible = isLocked
+        binding.exoTitle.isVisible = isLocked
+        binding.playPauseBTN.isVisible = isLocked
 
-        binding.exoTopBarRight.visibility = visibility
-        binding.exoCenterControls.visibility = visibility
-        binding.bottomBar.visibility = visibility
-        binding.closeImageButton.visibility = visibility
-        binding.exoTitle.visibility = visibility
-        binding.playPauseBTN.visibility = visibility
+        if (!PlayerHelper.doubleTapToSeek) {
+            binding.rewindBTN.isVisible = isLocked
+            binding.forwardBTN.isVisible = isLocked
+        }
 
         // hide the dimming background overlay if locked
         binding.exoControlsBackground.setBackgroundColor(
@@ -579,8 +597,8 @@ internal class CustomExoPlayerView(
         super.onConfigurationChanged(newConfig)
 
         // add a larger bottom margin to the time bar in landscape mode
-        val offset = when (newConfig?.orientation) {
-            Configuration.ORIENTATION_LANDSCAPE -> 20.dpToPx()
+        val offset = when {
+            playerViewModel?.isFullscreen?.value ?: (newConfig?.orientation == Configuration.ORIENTATION_LANDSCAPE) -> 20.dpToPx()
             else -> 10.dpToPx()
         }
 
@@ -591,7 +609,8 @@ internal class CustomExoPlayerView(
         updateTopBarMargin()
 
         // don't add extra padding if there's no cutout
-        if ((context as? MainActivity)?.windowHelper?.hasCutout() == false) return
+        val hasCutout = ViewCompat.getRootWindowInsets(this)?.displayCutout != null
+        if (!hasCutout && binding.topBar.marginStart == 0) return
 
         // add a margin to the top and the bottom bar in landscape mode for notches
         val newMargin = when (newConfig?.orientation) {
@@ -672,15 +691,14 @@ internal class CustomExoPlayerView(
     }
 
     override fun onSwipeCenterScreen(distanceY: Float) {
-        if (!PlayerHelper.swipeGestureEnabled) return
+        if (!PlayerHelper.fullscreenGesturesEnabled) return
 
         if (isControllerFullyVisible) hideController()
+        if (distanceY >= 0) return
 
-        if (distanceY < 0) {
-            playerGestureController.isMoving = false
-            (context as? AppCompatActivity)?.onBackPressedDispatcher?.onBackPressed()
-            playerViewModel?.isFullscreen?.value = false
-        }
+        playerGestureController.isMoving = false
+        (context as? AppCompatActivity)?.onBackPressedDispatcher?.onBackPressed()
+        playerViewModel?.isFullscreen?.value = false
     }
 
     override fun onSwipeEnd() {

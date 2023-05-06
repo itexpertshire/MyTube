@@ -7,6 +7,8 @@ import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.db.DatabaseHolder.Database
 import com.github.libretube.db.obj.*
 import com.github.libretube.extensions.query
+import com.github.libretube.db.obj.SearchHistoryItem
+import com.github.libretube.db.obj.WatchHistoryItem
 import com.github.libretube.extensions.toID
 import com.github.libretube.helpers.PreferenceHelper
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +22,7 @@ object DatabaseHelper {
         val watchHistoryItem = WatchHistoryItem(
             videoId,
             streams.title,
-            streams.uploadDate.toString(),
+            streams.uploadDate,
             streams.uploader,
             streams.uploaderUrl.toID(),
             streams.uploaderAvatar,
@@ -44,8 +46,8 @@ object DatabaseHelper {
         }
     }
 
-    fun addToSearchHistory(searchHistoryItem: SearchHistoryItem) {
-        query {
+    suspend fun addToSearchHistory(searchHistoryItem: List<SearchHistoryItem>) {
+
             Database.searchHistoryDao().insertAll(searchHistoryItem)
 
             // delete the first watch history entry if the limit is reached
@@ -54,7 +56,7 @@ object DatabaseHelper {
                 Database.searchHistoryDao()
                     .delete(searchHistory.first())
             }
-        }
+
     }
 
 

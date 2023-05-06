@@ -7,24 +7,22 @@ import com.github.libretube.api.RetrofitInstance
 import com.github.libretube.db.DatabaseHolder
 import com.github.libretube.enums.PlaylistType
 import com.github.libretube.enums.ShareObjectType
-import com.github.libretube.extensions.awaitQuery
-import com.github.libretube.extensions.query
 import com.github.libretube.extensions.toID
-import com.github.libretube.extensions.toastFromMainThread
+import com.github.libretube.extensions.toastFromMainDispatcher
 import com.github.libretube.helpers.BackgroundHelper
 import com.github.libretube.obj.ShareData
 import com.github.libretube.ui.dialogs.DeletePlaylistDialog
 import com.github.libretube.ui.dialogs.RenamePlaylistDialog
 import com.github.libretube.ui.dialogs.ShareDialog
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 class PlaylistOptionsBottomSheet(
     private val playlistId: String,
     private val playlistName: String,
     private val playlistType: PlaylistType,
+    private val onRename: (newName: String) -> Unit = {},
     private val onDelete: () -> Unit = {}
 ) : BaseBottomSheet() {
     private val shareData = ShareData(currentPlaylist = playlistName)
@@ -34,7 +32,7 @@ class PlaylistOptionsBottomSheet(
             getString(R.string.playOnBackground)
         )
 
-        val isBookmarked = awaitQuery {
+        val isBookmarked = runBlocking(Dispatchers.IO) {
             DatabaseHolder.Database.playlistBookmarkDao().includes(playlistId)
         }
 
@@ -55,27 +53,28 @@ class PlaylistOptionsBottomSheet(
             when (optionsList[which]) {
                 // play the playlist in the background
                 getString(R.string.playOnBackground) -> {
-                    runBlocking {
-                        val playlist = PlaylistsHelper.getPlaylist(playlistId)
+                    val playlist = withContext(Dispatchers.IO) {
+                        PlaylistsHelper.getPlaylist(playlistId)
+                    }
+                    playlist.relatedStreams.firstOrNull()?.let {
                         BackgroundHelper.playOnBackground(
-                            context = requireContext(),
-                            videoId = playlist.relatedStreams[0].url!!.toID(),
+                            requireContext(),
+                            it.url!!.toID(),
                             playlistId = playlistId
                         )
                     }
                 }
                 // Clone the playlist to the users Piped account
                 getString(R.string.clonePlaylist) -> {
-                    val appContext = context?.applicationContext
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val playlistId = PlaylistsHelper.clonePlaylist(
-                            requireContext().applicationContext,
-                            playlistId
-                        )
-                        appContext?.toastFromMainThread(
-                            if (playlistId != null) R.string.playlistCloned else R.string.server_error
-                        )
+                    val context = requireContext()
+                    val playlistId = withContext(Dispatchers.IO) {
+                        runCatching {
+                            PlaylistsHelper.clonePlaylist(context, playlistId)
+                        }.getOrNull()
                     }
+                    context.toastFromMainDispatcher(
+                        if (playlistId != null) R.string.playlistCloned else R.string.server_error
+                    )
                 }
                 // share the playlist
                 getString(R.string.share) -> {
@@ -86,30 +85,26 @@ class PlaylistOptionsBottomSheet(
                 getString(R.string.deletePlaylist) -> {
                     DeletePlaylistDialog(playlistId, playlistType) {
                         // try to refresh the playlists in the library on deletion success
-                        onDelete.invoke()
+                        onDelete()
                     }.show(parentFragmentManager, null)
                 }
                 getString(R.string.renamePlaylist) -> {
-                    RenamePlaylistDialog(playlistId, playlistName)
+                    RenamePlaylistDialog(playlistId, playlistName, onRename)
                         .show(parentFragmentManager, null)
                 }
                 else -> {
-                    CoroutineScope(Dispatchers.IO).launch {
+                    withContext(Dispatchers.IO) {
                         if (isBookmarked) {
-                            query {
-                                DatabaseHolder.Database.playlistBookmarkDao()
-                                    .deleteById(playlistId)
-                            }
+                            DatabaseHolder.Database.playlistBookmarkDao().deleteById(playlistId)
                         } else {
                             val bookmark = try {
                                 RetrofitInstance.api.getPlaylist(playlistId)
                             } catch (e: Exception) {
-                                return@launch
+                                return@withContext
                             }.toPlaylistBookmark(playlistId)
-                            DatabaseHolder.Database.playlistBookmarkDao().insertAll(bookmark)
+                            DatabaseHolder.Database.playlistBookmarkDao().insert(bookmark)
                         }
                     }
-                    dismiss()
                 }
             }
         }

@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.postDelayed
 import androidx.core.view.updatePadding
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -21,7 +22,6 @@ import com.github.libretube.extensions.dpToPx
 import com.github.libretube.helpers.NavigationHelper
 import com.github.libretube.helpers.ProxyHelper
 import com.github.libretube.ui.adapters.WatchHistoryAdapter
-import com.github.libretube.ui.base.BaseFragment
 import com.github.libretube.ui.models.PlayerViewModel
 import com.github.libretube.util.PlayingQueue
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -29,9 +29,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-class WatchHistoryFragment : BaseFragment() {
-    private lateinit var binding: FragmentWatchHistoryBinding
+class WatchHistoryFragment : Fragment() {
+    private var _binding: FragmentWatchHistoryBinding? = null
+    private val binding get() = _binding!!
 
+    private val handler = Handler(Looper.getMainLooper())
     private val playerViewModel: PlayerViewModel by activityViewModels()
     private var isLoading = false
 
@@ -40,7 +42,7 @@ class WatchHistoryFragment : BaseFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = FragmentWatchHistoryBinding.inflate(layoutInflater, container, false)
+        _binding = FragmentWatchHistoryBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -48,7 +50,7 @@ class WatchHistoryFragment : BaseFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         playerViewModel.isMiniPlayerVisible.observe(viewLifecycleOwner) {
-            binding.watchHistoryRecView.updatePadding(
+            _binding?.watchHistoryRecView?.updatePadding(
                 bottom = if (it) (64).dpToPx().toInt() else 0
             )
         }
@@ -90,7 +92,7 @@ class WatchHistoryFragment : BaseFragment() {
                         uploaderName = it.uploader,
                         uploaderUrl = it.uploaderUrl,
                         uploaderAvatar = it.uploaderAvatar,
-                        uploadedDate = it.uploadDate,
+                        uploadedDate = it.uploadDate?.toString(),
                         duration = it.duration
                     )
                 }.toTypedArray()
@@ -147,14 +149,22 @@ class WatchHistoryFragment : BaseFragment() {
         })
 
         // add a listener for scroll end, delay needed to prevent loading new ones the first time
-        Handler(Looper.getMainLooper()).postDelayed(200) {
+        handler.postDelayed(200) {
+            if (_binding == null) return@postDelayed
             binding.historyScrollView.viewTreeObserver.addOnScrollChangedListener {
-                if (!binding.historyScrollView.canScrollVertically(1) && !isLoading) {
+                if (_binding?.historyScrollView?.canScrollVertically(1) == false &&
+                    !isLoading
+                ) {
                     isLoading = true
                     watchHistoryAdapter.showMoreItems()
                     isLoading = false
                 }
             }
         }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }

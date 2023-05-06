@@ -1,24 +1,22 @@
 package com.github.libretube.extensions
 
-import java.math.BigDecimal
-import java.math.RoundingMode
+import android.icu.text.CompactDecimalFormat
+import android.os.Build
+import java.util.*
+import kotlin.math.pow
 
-@Suppress("KotlinConstantConditions")
-fun Long?.formatShort(): String = when {
-    this == null -> (0).toString()
-    this < 1000 -> {
-        this.toString()
-    }
-    this in (1000..999999) -> {
-        val decimal = BigDecimal(this / 1000).setScale(0, RoundingMode.HALF_EVEN)
-        decimal.toString() + "K"
-    }
-    this in (1000000..10000000) -> {
-        val decimal = BigDecimal(this / 1000000).setScale(0, RoundingMode.HALF_EVEN)
-        decimal.toString() + "M"
-    }
-    else -> {
-        val decimal = BigDecimal(this / 1000000).setScale(0, RoundingMode.HALF_EVEN)
-        decimal.toString() + "M"
+fun Long?.formatShort(): String {
+    val value = this ?: 0
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        CompactDecimalFormat
+            .getInstance(Locale.getDefault(), CompactDecimalFormat.CompactStyle.SHORT)
+            .format(value)
+    } else {
+        val units = arrayOf("", "K", "M", "B", "T")
+        for (i in units.size downTo 1) {
+            val step = 1000.0.pow(i.toDouble())
+            if (value > step) return String.format("%3.0f%s", value / step, units[i]).trim()
+        }
+        value.toString()
     }
 }

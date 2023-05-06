@@ -3,20 +3,21 @@ package com.github.libretube.helpers
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.widget.ImageView
+import androidx.core.graphics.drawable.toBitmap
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.load
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import coil.request.ImageResult
 import com.github.libretube.api.CronetHelper
 import com.github.libretube.constants.PreferenceKeys
+import com.github.libretube.extensions.toAndroidUri
+import com.github.libretube.extensions.toAndroidUriOrNull
 import com.github.libretube.util.DataSaverMode
-import java.io.File
-import java.io.FileOutputStream
-import okio.use
+import java.nio.file.Path
 
 object ImageHelper {
     lateinit var imageLoader: ImageLoader
@@ -53,54 +54,55 @@ object ImageHelper {
      */
     fun loadImage(url: String?, target: ImageView) {
         // only load the image if the data saver mode is disabled
-        if (!DataSaverMode.isEnabled(target.context)) target.load(url, imageLoader)
+        if (DataSaverMode.isEnabled(target.context) || url == null) return
+        val urlToLoad = ProxyHelper.unwrapIfEnabled(url)
+        target.load(urlToLoad, imageLoader)
     }
 
-    fun downloadImage(context: Context, url: String, path: String) {
+    fun downloadImage(context: Context, url: String, path: Path) {
         getAsync(context, url) { bitmap ->
-            saveImage(context, bitmap, Uri.fromFile(File(path)))
+            saveImage(context, bitmap, path.toAndroidUri())
         }
     }
 
     fun getAsync(context: Context, url: String?, onSuccess: (Bitmap) -> Unit) {
         val request = ImageRequest.Builder(context)
             .data(url)
-            .target { result ->
-                val bitmap = (result as BitmapDrawable).bitmap
-                onSuccess.invoke(bitmap)
-            }
+            .target { onSuccess(it.toBitmap()) }
             .build()
 
         imageLoader.enqueue(request)
     }
 
-    fun getDownloadedImage(context: Context, path: String): Bitmap? {
-        val file = File(path)
-        if (!file.exists()) return null
-        return getImage(context, Uri.fromFile(file))
+    suspend fun getImage(context: Context, url: String?): ImageResult {
+        val request = ImageRequest.Builder(context)
+            .data(url)
+            .build()
+
+        return imageLoader.execute(request)
+    }
+
+    fun getDownloadedImage(context: Context, path: Path): Bitmap? {
+        return path.toAndroidUriOrNull()?.let { getImage(context, it) }
     }
 
     private fun saveImage(context: Context, bitmapImage: Bitmap, imagePath: Uri) {
-        context.contentResolver.openFileDescriptor(imagePath, "w")?.use {
-            FileOutputStream(it.fileDescriptor).use { fos ->
-                bitmapImage.compress(Bitmap.CompressFormat.PNG, 25, fos)
-            }
+        context.contentResolver.openOutputStream(imagePath)?.use {
+            bitmapImage.compress(Bitmap.CompressFormat.PNG, 25, it)
         }
     }
 
     private fun getImage(context: Context, imagePath: Uri): Bitmap? {
-        context.contentResolver.openInputStream(imagePath)?.use {
-            return BitmapFactory.decodeStream(it)
+        return context.contentResolver.openInputStream(imagePath)?.use {
+            BitmapFactory.decodeStream(it)
         }
-        return null
     }
 
     /**
      * Get a squared bitmap with the same width and height from a bitmap
      * @param bitmap The bitmap to resize
      */
-    fun getSquareBitmap(bitmap: Bitmap?): Bitmap? {
-        bitmap ?: return null
+    fun getSquareBitmap(bitmap: Bitmap): Bitmap {
         val newSize = minOf(bitmap.width, bitmap.height)
         return Bitmap.createBitmap(
             bitmap,

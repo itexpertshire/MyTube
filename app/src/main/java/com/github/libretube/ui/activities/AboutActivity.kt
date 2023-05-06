@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.core.text.HtmlCompat
 import androidx.core.text.parseAsHtml
+import com.github.libretube.BuildConfig
 import com.github.libretube.R
 import com.github.libretube.constants.GITHUB_URL
 import com.github.libretube.constants.LICENSE_URL
@@ -33,14 +34,10 @@ class AboutActivity : BaseActivity() {
         }
 
         binding.appIcon.setOnClickListener {
-            val sendIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_TEXT, GITHUB_URL)
-                type = "text/plain"
-            }
-
-            val shareIntent = Intent.createChooser(sendIntent, null)
-            startActivity(shareIntent)
+            val sendIntent = Intent(Intent.ACTION_SEND)
+                .putExtra(Intent.EXTRA_TEXT, GITHUB_URL)
+                .setType("text/plain")
+            startActivity(Intent.createChooser(sendIntent, null))
         }
 
         setupCard(binding.website, WEBSITE_URL)
@@ -63,7 +60,7 @@ class AboutActivity : BaseActivity() {
 
     private fun setupCard(card: MaterialCardView, link: String) {
         card.setOnClickListener {
-            IntentHelper.openLinkFromHref(this, link)
+            IntentHelper.openLinkFromHref(this, supportFragmentManager, link)
         }
         card.setOnLongClickListener {
             onLongClick(link)
@@ -81,7 +78,7 @@ class AboutActivity : BaseActivity() {
             Snackbar.LENGTH_LONG
         )
             .setAction(R.string.open_copied) {
-                IntentHelper.openLinkFromHref(this, href)
+                IntentHelper.openLinkFromHref(this, supportFragmentManager, href)
             }
             .setAnimationMode(Snackbar.ANIMATION_MODE_FADE)
             .show()
@@ -107,7 +104,7 @@ class AboutActivity : BaseActivity() {
             "Board: ${Build.BOARD}\n" +
             "OS: Android ${Build.VERSION.RELEASE}\n" +
             "Arch: ${Build.SUPPORTED_ABIS[0]}\n" +
-            "Product: ${Build.PRODUCT}"
+            "Product: ${Build.PRODUCT}\n"+ "Version: ${BuildConfig.VERSION_NAME} ${BuildConfig.VERSION_CODE}"
 
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.device_info)

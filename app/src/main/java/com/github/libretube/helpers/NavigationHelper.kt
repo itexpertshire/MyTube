@@ -4,10 +4,10 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
-import androidx.appcompat.app.AppCompatActivity
+import android.os.Process
+import androidx.core.content.getSystemService
 import androidx.core.os.bundleOf
 import androidx.core.os.postDelayed
 import androidx.fragment.app.commitNow
@@ -18,6 +18,7 @@ import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.enums.PlaylistType
 import com.github.libretube.extensions.toID
 import com.github.libretube.ui.activities.MainActivity
+import com.github.libretube.ui.fragments.AudioPlayerFragment
 import com.github.libretube.ui.fragments.PlayerFragment
 import com.github.libretube.ui.views.SingleViewTouchableMotionLayout
 
@@ -30,7 +31,7 @@ object NavigationHelper {
     ) {
         if (channelId == null) return
 
-        val activity = unwrap(context)
+        val activity = unwrapActivity(context)
         val bundle = bundleOf(IntentData.channelId to channelId)
         activity.navController.navigate(R.id.channelFragment, bundle)
         try {
@@ -44,7 +45,7 @@ object NavigationHelper {
         }
     }
 
-    private fun unwrap(context: Context): MainActivity {
+    private fun unwrapActivity(context: Context): MainActivity {
         var correctContext: Context? = context
         while (correctContext !is MainActivity && correctContext is ContextWrapper) {
             correctContext = correctContext.baseContext
@@ -91,7 +92,7 @@ object NavigationHelper {
             IntentData.timeStamp to timeStamp
         )
 
-        val activity = context as AppCompatActivity
+        val activity = unwrapActivity(context)
         activity.supportFragmentManager.commitNow {
             replace<PlayerFragment>(R.id.container, args = bundle)
         }
@@ -104,7 +105,7 @@ object NavigationHelper {
     ) {
         if (playlistId == null) return
 
-        val activity = unwrap(context)
+        val activity = unwrapActivity(context)
         val bundle = bundleOf(
             IntentData.playlistId to playlistId,
             IntentData.playlistType to playlistType
@@ -116,8 +117,10 @@ object NavigationHelper {
      * Start the audio player fragment
      */
     fun startAudioPlayer(context: Context) {
-        val activity = unwrap(context)
-        activity.navController.navigate(R.id.audioPlayerFragment)
+        val activity = unwrapActivity(context)
+        activity.supportFragmentManager.commitNow {
+            replace<AudioPlayerFragment>(R.id.container)
+        }
     }
 
     /**
@@ -125,15 +128,13 @@ object NavigationHelper {
      */
     fun restartMainActivity(context: Context) {
         // kill player notification
-        val nManager = context
-            .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nManager.cancelAll()
+        context.getSystemService<NotificationManager>()!!.cancelAll()
         // start a new Intent of the app
-        val pm: PackageManager = context.packageManager
+        val pm = context.packageManager
         val intent = pm.getLaunchIntentForPackage(context.packageName)
         intent?.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK
         context.startActivity(intent)
         // kill the old application
-        android.os.Process.killProcess(android.os.Process.myPid())
+        Process.killProcess(Process.myPid())
     }
 }

@@ -48,6 +48,7 @@ object PreferenceKeys {
     const val CUSTOM_INSTANCE = "customInstance"
     const val CLEAR_CUSTOM_INSTANCES = "clearCustomInstances"
     const val LOGIN_REGISTER = "login_register"
+    const val LOGOUT = "logout"
     const val DELETE_ACCOUNT = "delete_account"
 
     /**
@@ -91,6 +92,11 @@ object PreferenceKeys {
     const val ALTERNATIVE_PIP_CONTROLS = "alternative_pip_controls"
     const val SKIP_SILENCE = "skip_silence"
     const val ENABLED_VIDEO_CODECS = "video_codecs"
+    const val AUTOPLAY_COUNTDOWN = "autoplay_countdown"
+    const val LBRY_HLS = "lbry_hls"
+    const val AUTO_FULLSCREEN_SHORTS = "auto_fullscreen_shorts"
+    const val PLAY_AUTOMATICALLY = "play_automatically"
+    const val FULLSCREEN_GESTURES = "fullscreen_gestures"
 
     /**
      * Background mode
@@ -101,6 +107,7 @@ object PreferenceKeys {
      * Notifications
      */
     const val NOTIFICATION_ENABLED = "notification_toggle"
+    const val SHOW_STREAM_THUMBNAILS = "show_stream_thumbnails"
     const val CHECKING_FREQUENCY = "checking_frequency"
     const val REQUIRED_NETWORK = "required_network"
     const val IGNORED_NOTIFICATION_CHANNELS = "ignored_notification_channels"
@@ -114,7 +121,7 @@ object PreferenceKeys {
     const val LAST_STREAM_VIDEO_ID = "last_stream_video_id"
     const val LAST_WATCHED_FEED_TIME = "last_watched_feed_time"
     const val HIDE_WATCHED_FROM_FEED = "hide_watched_from_feed"
-    const val SELECTED_FEED_FILTER = "selected_filer_feed"
+    const val SELECTED_FEED_FILTER = "filer_feed"
     const val FEED_SORT_ORDER = "sort_oder_feed"
 
     /**
@@ -130,6 +137,7 @@ object PreferenceKeys {
     const val CONFIRM_UNSUBSCRIBE = "confirm_unsubscribing"
     const val CLEAR_BOOKMARKS = "clear_bookmarks"
     const val MAX_CONCURRENT_DOWNLOADS = "max_concurrent_downloads"
+    const val DISABLE_VIDEO_IMAGE_PROXY = "disable_video_image_proxy"
 
     /**
      * History

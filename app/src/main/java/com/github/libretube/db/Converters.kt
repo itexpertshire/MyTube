@@ -1,0 +1,42 @@
+package com.github.libretube.db
+
+import androidx.room.TypeConverter
+import com.github.libretube.api.JsonHelper
+import java.nio.file.Path
+import java.nio.file.Paths
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toLocalDate
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import java.sql.Date
+
+object Converters {
+    @TypeConverter
+    fun localDateToString(localDate: LocalDate?) = localDate?.toString()
+
+    @TypeConverter
+    fun stringToLocalDate(string: String?) = string?.toLocalDate()
+
+    @TypeConverter
+    fun pathToString(path: Path?) = path?.toString()
+
+    @TypeConverter
+    fun stringToPath(string: String?) = string?.let { Paths.get(it) }
+
+    @TypeConverter
+    fun stringListToJson(value: List<String>) = JsonHelper.json.encodeToString(value)
+
+    @TypeConverter
+    fun jsonToStringList(value: String) = JsonHelper.json.decodeFromString<List<String>>(value)
+
+    @TypeConverter
+    fun fromTimestamp(value: Long?): Date? {
+        return value?.let { Date(it) }
+    }
+
+    @TypeConverter
+    fun dateToTimestamp(date: Date?): Long? {
+        return date?.time
+    }
+
+}

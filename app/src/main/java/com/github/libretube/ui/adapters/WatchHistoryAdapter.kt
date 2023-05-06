@@ -1,7 +1,6 @@
 package com.github.libretube.ui.adapters
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.github.libretube.databinding.VideoRowBinding
@@ -14,6 +13,7 @@ import com.github.libretube.ui.extensions.setFormattedDuration
 import com.github.libretube.ui.extensions.setWatchProgressLength
 import com.github.libretube.ui.sheets.VideoOptionsBottomSheet
 import com.github.libretube.ui.viewholders.WatchHistoryViewHolder
+import com.github.libretube.util.TextUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
@@ -22,7 +22,7 @@ class WatchHistoryAdapter(
 ) :
     RecyclerView.Adapter<WatchHistoryViewHolder>() {
 
-    var visibleCount = minOf(10, watchHistory.size)
+    private var visibleCount = minOf(10, watchHistory.size)
 
     override fun getItemCount(): Int = visibleCount
 
@@ -55,18 +55,13 @@ class WatchHistoryAdapter(
         holder.binding.apply {
             videoTitle.text = video.title
             channelName.text = video.uploader
-            videoInfo.text = video.uploadDate
+            videoInfo.text = video.uploadDate?.let { TextUtils.localizeDate(it) }
             thumbnailDuration.setFormattedDuration(video.duration!!, null)
             ImageHelper.loadImage(video.thumbnailUrl, thumbnail)
             ImageHelper.loadImage(video.uploaderAvatar, channelImage)
 
             channelImage.setOnClickListener {
                 NavigationHelper.navigateChannel(root.context, video.uploaderUrl)
-            }
-
-            deleteVideo.visibility = View.VISIBLE
-            deleteVideo.setOnClickListener {
-                removeFromWatchHistory(position)
             }
 
             root.setOnClickListener {

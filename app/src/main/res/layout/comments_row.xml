@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -10,13 +10,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:animateLayoutChanges="true"
         android:layout_marginBottom="16dp"
+        android:animateLayoutChanges="true"
         android:orientation="horizontal"
         android:paddingStart="15dp"
-        android:paddingEnd="15dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:paddingEnd="15dp">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/commentor_image"
@@ -45,8 +43,8 @@
                     android:ellipsize="end"
                     android:maxLines="2"
                     android:textAlignment="viewStart"
-                    android:textSize="14sp"
                     android:textColor="?android:attr/textColorSecondary"
+                    android:textSize="14sp"
                     tools:text="Octacat • 10h" />
 
                 <ImageView
@@ -74,9 +72,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
                 android:layout_marginBottom="8dp"
-                android:textSize="15sp"
-                android:autoLink="web"
                 android:textAlignment="viewStart"
+                android:textIsSelectable="true"
+                android:textSize="15sp"
                 tools:text="Comment Text" />
 
             <LinearLayout
@@ -87,12 +85,12 @@
 
                 <com.github.libretube.ui.views.DrawableTextView
                     android:id="@+id/likes_textView"
-                    android:layout_height="wrap_content"
                     android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_marginEnd="5dp"
+                    android:drawablePadding="6dp"
                     android:gravity="center_vertical"
                     android:includeFontPadding="false"
-                    android:drawablePadding="6dp"
                     app:drawableStartCompat="@drawable/ic_thumb_up"
                     app:drawableStartDimen="16dp"
                     tools:text="1.2k" />
@@ -108,8 +106,8 @@
 
                 <com.github.libretube.ui.views.DrawableTextView
                     android:id="@+id/replies_count"
-                    android:layout_height="wrap_content"
                     android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:drawablePadding="6dp"
                     android:gravity="center_vertical"
                     android:includeFontPadding="false"
@@ -125,4 +123,4 @@
 
 
     </LinearLayout>
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

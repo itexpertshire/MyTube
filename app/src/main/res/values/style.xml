@@ -64,14 +64,12 @@
 
     </style>
 
-    <style name="PlayerActionsLayout">
+    <style name="DisabledTextInput">
 
-        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_weight">1</item>
-        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
-        <item name="android:gravity">center</item>
-        <item name="android:orientation">vertical</item>
+        <item name="android:editable">false</item>
+        <item name="android:textIsSelectable">true</item>
 
     </style>
 
@@ -238,6 +236,15 @@
         <item name="android:marqueeRepeatLimit">marquee_forever</item>
         <item name="android:scrollHorizontally">true</item>
         <item name="android:textAlignment">center</item>
+
+    </style>
+
+    <style name="ElevatedFilterChip" parent="Widget.Material3.Chip.Filter.Elevated">
+
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">5dp</item>
+        <item name="android:layout_marginEnd">5dp</item>
 
     </style>
 

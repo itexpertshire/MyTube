@@ -6,7 +6,7 @@
 
         <ListPreference
             android:icon="@drawable/ic_server"
-            app:defaultValue="https://pipedapi.kavin.rocks/"
+            app:defaultValue="https://pipedapi.kavin.rocks"
             app:entries="@array/instances"
             app:entryValues="@array/instancesValue"
             app:key="selectInstance"
@@ -32,7 +32,7 @@
 
         <ListPreference
             android:icon="@drawable/ic_server"
-            app:defaultValue="https://pipedapi.kavin.rocks/"
+            app:defaultValue="https://pipedapi.kavin.rocks"
             app:entries="@array/instances"
             app:entryValues="@array/instancesValue"
             app:key="selectAuthInstance"
@@ -47,6 +47,13 @@
             android:summary="@string/notgmail"
             app:key="login_register"
             app:title="@string/login_register" />
+
+        <Preference
+            android:icon="@drawable/ic_login_filled"
+            android:summary="@string/notgmail"
+            app:isPreferenceVisible="false"
+            app:key="logout"
+            app:title="@string/logout" />
 
         <Preference
             android:icon="@drawable/ic_reset"

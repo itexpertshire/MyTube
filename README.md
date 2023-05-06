@@ -1,12 +1,17 @@
 <div align="center">
   <img src="https://libre-tube.github.io/images/gh-banner.png" width="auto" height="auto" alt="LibreTube">
-
+  
 [![GPL-v3](https://libre-tube.github.io/assets/widgets/license-widget.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+</div><div align="center" style="width:100%; display:flex; justify-content:space-between;">
+
 [![Matrix](https://libre-tube.github.io/assets/widgets/mat-widget.svg)](https://matrix.to/#/#LibreTube:matrix.org)
 [![Mastodon](https://libre-tube.github.io/assets/widgets/mast-widget.svg)](https://fosstodon.org/@libretube)
 [![Telegram](https://libre-tube.github.io/assets/widgets/tg-widget.svg)](https://t.me/libretube)
-[![Reddit](https://libre-tube.github.io/assets/widgets/rd-widget.svg)](https://www.reddit.com/r/Libretube/)
-[![Discord](https://libre-tube.github.io/assets/widgets/discord-widget.svg)](https://discord.gg/Qc34xCj2GV)
+
+</div>
+
+> **Note** <br>
+> We don't accept feature or bug requests on these platforms. Kindly submit requests only on GitHub.
 
 </div><div align="center" style="width:100%; display:flex; justify-content:space-between;">
 
@@ -141,14 +146,10 @@ Both are great clients for watching YouTube videos. It depends on the individual
 Privacy Policy and Disclaimer
 </h2>
 
-The LibreTube project aims to provide a private, anonymous experience for using web-based media services. Therefore, the app does not collect any data without your consent.
 
-The LibreTube project and its contents are not affiliated with, funded, authorized, endorsed by, or in any way associated with YouTube, Google LLC, or any of its affiliates or subsidaries.<br>
-Any trademark, service mark, trade name, or other intellectual property rights used are owned by the respective owners.
+LibreTube aims to protect the privacy of its users. [Our Privacy Policy](/PRIVACY_POLICY.md) gives detailed information on which data the app stores in order to work, how it is being used, and how the project protects your personal information. It is recommended to read the privacy policy of LibreTube as well as the privacy policy of the instance you have chosen inside the app.
 
-LibreTube is an open source software built for learning and research purposes.
-
-## License
+### License
 [![GNU GPLv3 Image](https://www.gnu.org/graphics/gplv3-127x51.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)
 
 LibreTube is Free Software: You can use, study, share and modify it at your will. The app can be redistributed and/or modified under the terms of the

@@ -110,20 +110,26 @@ class VideosAdapter(
         val videoName = video.title
 
         // hide the item if there was an extractor error
-        if (video.title == null && video.type != "caught") {
+        if (hideWatched || (video.title == null && video.type == "caught")) {
             hideItemView(holder)
             return
         }
 
+         videoId?.let {
+             (holder.trendingRowBinding?.watchProgress ?: holder.videoRowBinding!!.watchProgress).setWatchProgressLength(it, video.duration ?: 0L)
+         }
+        /*
         videoId?.let {
             val shouldHide =
                 (holder.trendingRowBinding?.watchProgress ?: holder.videoRowBinding!!.watchProgress)
                     .setWatchProgressLength(it, video.duration ?: 0L)
-            if (hideWatched && shouldHide) {
+            if (hideWatched ) {
                 hideItemView(holder)
                 return
             }
-        }
+            else
+                return shouldHide
+        }*/
 
         // Trending layout
         holder.trendingRowBinding?.apply {
@@ -137,13 +143,12 @@ class VideosAdapter(
             }
 
             textViewTitle.text = video.title
-            textViewChannel.text =
-                video.uploaderName + TextUtils.SEPARATOR +
-                video.views.formatShort() + " " +
-                root.context.getString(R.string.views_placeholder) +
-                TextUtils.SEPARATOR + video.uploaded?.let {
-                    DateUtils.getRelativeTimeSpanString(it)
-                }
+            textViewChannel.text = root.context.getString(
+                R.string.trending_views,
+                video.uploaderName,
+                video.views.formatShort(),
+                video.uploaded?.let { TextUtils.formatRelativeDate(root.context, it) }
+            )
             video.duration?.let { thumbnailDuration.setFormattedDuration(it, video.isShort) }
             channelImage.setOnClickListener {
                 NavigationHelper.navigateChannel(root.context, video.uploaderUrl)
@@ -170,15 +175,15 @@ class VideosAdapter(
         holder.videoRowBinding?.apply {
             videoTitle.text = video.title
 
-            videoInfo.text =
-                video.views.formatShort() + " " +
-                root.context.getString(R.string.views_placeholder) +
-                TextUtils.SEPARATOR + video.uploaded?.let {
-                    DateUtils.getRelativeTimeSpanString(it)
+            videoInfo.text = root.context.getString(
+                R.string.normal_views,
+                video.views.formatShort(),
+                video.uploaded?.let {
+                    TextUtils.SEPARATOR + TextUtils.formatRelativeDate(root.context, it)
                 }
+            )
 
-            thumbnailDuration.text =
-                video.duration?.let { DateUtils.formatElapsedTime(it) }
+            thumbnailDuration.text = video.duration?.let { DateUtils.formatElapsedTime(it) }
 
             ImageHelper.loadImage(video.thumbnail, thumbnail)
 

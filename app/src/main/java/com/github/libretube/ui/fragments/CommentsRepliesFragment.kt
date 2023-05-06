@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.github.libretube.api.JsonHelper
 import com.github.libretube.api.RetrofitInstance
@@ -19,13 +20,14 @@ import com.github.libretube.extensions.TAG
 import com.github.libretube.ui.adapters.CommentsAdapter
 import com.github.libretube.ui.extensions.filterNonEmptyComments
 import com.github.libretube.ui.models.CommentsViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class CommentsRepliesFragment : Fragment() {
-    private lateinit var binding: FragmentCommentsBinding
+    private var _binding: FragmentCommentsBinding? = null
+    private val binding get() = _binding!!
+
     private lateinit var repliesPage: CommentsPage
     private lateinit var repliesAdapter: CommentsAdapter
     private val viewModel: CommentsViewModel by activityViewModels()
@@ -37,7 +39,7 @@ class CommentsRepliesFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = FragmentCommentsBinding.inflate(inflater, container, false)
+        _binding = FragmentCommentsBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -49,7 +51,13 @@ class CommentsRepliesFragment : Fragment() {
             arguments?.getString(IntentData.comment)!!
         )
 
-        repliesAdapter = CommentsAdapter(null, videoId, mutableListOf(comment), true) {
+        repliesAdapter = CommentsAdapter(
+            null,
+            videoId,
+            mutableListOf(comment),
+            true,
+            viewModel.handleLink
+        ) {
             viewModel.commentsSheetDismiss?.invoke()
         }
 
@@ -57,19 +65,23 @@ class CommentsRepliesFragment : Fragment() {
         binding.commentsRV.layoutManager = LinearLayoutManager(context)
         binding.commentsRV.adapter = repliesAdapter
 
-        binding.commentsRV.viewTreeObserver
-            .addOnScrollChangedListener {
-                if (!binding.commentsRV.canScrollVertically(1) &&
-                    ::repliesPage.isInitialized &&
-                    repliesPage.nextpage != null
-                ) {
-                    fetchReplies(videoId, repliesPage.nextpage!!) {
-                        repliesAdapter.updateItems(repliesPage.comments)
-                    }
+        binding.commentsRV.viewTreeObserver.addOnScrollChangedListener {
+            if (_binding?.commentsRV?.canScrollVertically(1) == false &&
+                ::repliesPage.isInitialized &&
+                repliesPage.nextpage != null
+            ) {
+                fetchReplies(videoId, repliesPage.nextpage!!) {
+                    repliesAdapter.updateItems(repliesPage.comments)
                 }
             }
+        }
 
         loadInitialReplies(videoId, comment.repliesPage ?: "", repliesAdapter)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 
     private fun loadInitialReplies(
@@ -89,7 +101,7 @@ class CommentsRepliesFragment : Fragment() {
         nextPage: String,
         onFinished: (CommentsPage) -> Unit
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             if (isLoading) return@launch
             isLoading = true
             repliesPage = try {

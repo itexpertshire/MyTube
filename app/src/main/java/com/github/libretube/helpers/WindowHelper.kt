@@ -1,54 +1,38 @@
 package com.github.libretube.helpers
 
+import android.app.Activity
 import android.os.Build
 import android.view.WindowManager
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
-import com.github.libretube.ui.base.BaseActivity
+import com.github.libretube.ui.extensions.toggleSystemBars
 
-class WindowHelper(private val activity: BaseActivity) {
-    fun setFullscreen() = activity.apply {
+object WindowHelper {
+    fun toggleFullscreen(activity: Activity, isFullscreen: Boolean) {
+        val window = activity.window
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes.layoutInDisplayCutoutMode =
+            window.attributes.layoutInDisplayCutoutMode = if (isFullscreen) {
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-        }
-
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window, window.decorView).let { controller ->
-            controller.hide(
-                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.navigationBars()
-            )
-            controller.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
-
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        )
-    }
-
-    fun unsetFullscreen() = activity.apply {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes.layoutInDisplayCutoutMode =
+            } else {
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+            }
         }
 
-        WindowCompat.setDecorFitsSystemWindows(window, true)
-        WindowInsetsControllerCompat(window, window.decorView).let { controller ->
-            controller.show(
-                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.navigationBars()
-            )
-            controller.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+        WindowCompat.setDecorFitsSystemWindows(window, !isFullscreen)
+
+        val layoutNoLimitsFlag = WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        if (isFullscreen) {
+            window.setFlags(layoutNoLimitsFlag, layoutNoLimitsFlag)
+        } else {
+            window.clearFlags(layoutNoLimitsFlag)
         }
 
-        window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-    }
-
-    fun hasCutout(): Boolean {
-        return ViewCompat.getRootWindowInsets(activity.window.decorView)?.displayCutout != null
+        // Show the system bars when it is not fullscreen and hide them when it is fullscreen
+        // System bars means status bar and the navigation bar
+        // See: https://developer.android.com/training/system-ui/immersive#kotlin
+        activity.toggleSystemBars(
+            types = WindowInsetsCompat.Type.systemBars(),
+            showBars = !isFullscreen
+        )
     }
 }

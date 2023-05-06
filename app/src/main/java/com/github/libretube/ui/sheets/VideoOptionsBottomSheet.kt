@@ -11,7 +11,6 @@ import com.github.libretube.db.DatabaseHelper
 import com.github.libretube.db.DatabaseHolder
 import com.github.libretube.db.obj.WatchPosition
 import com.github.libretube.enums.ShareObjectType
-import com.github.libretube.extensions.awaitQuery
 import com.github.libretube.helpers.BackgroundHelper
 import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.helpers.PreferenceHelper
@@ -26,6 +25,7 @@ import com.github.libretube.util.PlayingQueue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Dialog with different options for a selected video.
@@ -108,8 +108,8 @@ class VideoOptionsBottomSheet(
                 }
                 getString(R.string.mark_as_watched) -> {
                     val watchPosition = WatchPosition(videoId, Long.MAX_VALUE)
-                    awaitQuery {
-                        DatabaseHolder.Database.watchPositionDao().insertAll(watchPosition)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        DatabaseHolder.Database.watchPositionDao().insertAll(listOf( watchPosition))
                     }
                     if (PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false)) {
                         // get the host fragment containing the current fragment

@@ -13,7 +13,11 @@ import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.navigation.fragment.findNavController
+import androidx.constraintlayout.motion.widget.MotionLayout
+import androidx.constraintlayout.motion.widget.TransitionAdapter
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.commit
 import com.github.libretube.R
 import com.github.libretube.api.obj.StreamItem
 import com.github.libretube.databinding.FragmentAudioPlayerBinding
@@ -25,20 +29,29 @@ import com.github.libretube.helpers.BackgroundHelper
 import com.github.libretube.helpers.ImageHelper
 import com.github.libretube.helpers.NavigationHelper
 import com.github.libretube.obj.ShareData
-import com.github.libretube.services.BackgroundMode
+import com.github.libretube.services.OnlinePlayerService
 import com.github.libretube.ui.activities.MainActivity
-import com.github.libretube.ui.base.BaseFragment
 import com.github.libretube.ui.dialogs.ShareDialog
 import com.github.libretube.ui.interfaces.AudioPlayerOptions
 import com.github.libretube.ui.listeners.AudioPlayerThumbnailListener
+import com.github.libretube.ui.models.PlayerViewModel
 import com.github.libretube.ui.sheets.PlaybackOptionsSheet
 import com.github.libretube.ui.sheets.PlayingQueueSheet
 import com.github.libretube.ui.sheets.VideoOptionsBottomSheet
 import com.github.libretube.util.PlayingQueue
+import kotlin.math.abs
 
-class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
-    private lateinit var binding: FragmentAudioPlayerBinding
+class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
+    private var _binding: FragmentAudioPlayerBinding? = null
+    private val binding get() = _binding!!
+
     private lateinit var audioHelper: AudioHelper
+    private val mainActivity get() = context as MainActivity
+    private val viewModel: PlayerViewModel by activityViewModels()
+
+    // for the transition
+    private var sId: Int = 0
+    private var eId: Int = 0
 
     private val onTrackChangeListener: (StreamItem) -> Unit = {
         updateStreamInfo()
@@ -46,33 +59,25 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
     private var handler = Handler(Looper.getMainLooper())
     private var isPaused: Boolean = false
 
-    private var playerService: BackgroundMode? = null
+    private var playerService: OnlinePlayerService? = null
 
     /** Defines callbacks for service binding, passed to bindService()  */
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
             // We've bound to LocalService, cast the IBinder and get LocalService instance
-            val binder = service as BackgroundMode.LocalBinder
+            val binder = service as OnlinePlayerService.LocalBinder
             playerService = binder.getService()
             handleServiceConnection()
         }
 
-        override fun onServiceDisconnected(arg0: ComponentName) {
-            val mainActivity = activity as MainActivity
-            if (mainActivity.navController.currentDestination?.id == R.id.audioPlayerFragment) {
-                mainActivity.navController.popBackStack()
-            } else {
-                mainActivity.navController.backQueue.removeIf {
-                    it.destination.id == R.id.audioPlayerFragment
-                }
-            }
-        }
+        override fun onServiceDisconnected(arg0: ComponentName) {}
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         audioHelper = AudioHelper(requireContext())
-        Intent(activity, BackgroundMode::class.java).also { intent ->
+        Intent(activity, OnlinePlayerService::class.java).also { intent ->
             activity?.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
     }
@@ -82,13 +87,15 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = FragmentAudioPlayerBinding.inflate(layoutInflater)
+        _binding = FragmentAudioPlayerBinding.inflate(inflater)
         return binding.root
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        initializeTransitionLayout()
 
         // select the title TV in order for it to automatically scroll
         binding.title.isSelected = true
@@ -118,6 +125,8 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
         }
 
         binding.openVideo.setOnClickListener {
+            BackgroundHelper.stopBackgroundPlay(requireContext())
+            killFragment()
             NavigationHelper.navigateVideo(
                 context = requireContext(),
                 videoId = PlayingQueue.getCurrent()?.url?.toID(),
@@ -125,8 +134,6 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
                 keepQueue = true,
                 forceVideo = true
             )
-            BackgroundHelper.stopBackgroundPlay(requireContext())
-            findNavController().popBackStack()
         }
 
         binding.share.setOnClickListener {
@@ -139,8 +146,15 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
         }
 
         binding.close.setOnClickListener {
+            activity?.unbindService(connection)
             BackgroundHelper.stopBackgroundPlay(requireContext())
-            findNavController().popBackStack()
+            killFragment()
+        }
+
+        binding.miniPlayerClose.setOnClickListener {
+            activity?.unbindService(connection)
+            BackgroundHelper.stopBackgroundPlay(requireContext())
+            killFragment()
         }
 
         val listener = AudioPlayerThumbnailListener(requireContext(), this)
@@ -153,6 +167,10 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
             if (isPaused) playerService?.play() else playerService?.pause()
         }
 
+        binding.miniPlayerPause.setOnClickListener {
+            if (isPaused) playerService?.play() else playerService?.pause()
+        }
+
         // load the stream info into the UI
         updateStreamInfo()
 
@@ -160,6 +178,46 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
         binding.volumeProgressBar.let { bar ->
             bar.progress = audioHelper.getVolumeWithScale(bar.max)
         }
+    }
+
+    private fun killFragment() {
+        viewModel.isFullscreen.value = false
+        binding.playerMotionLayout.transitionToEnd()
+        mainActivity.supportFragmentManager.commit {
+            remove(this@AudioPlayerFragment)
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun initializeTransitionLayout() {
+        mainActivity.binding.container.visibility = View.VISIBLE
+        val mainMotionLayout = mainActivity.binding.mainMotionLayout
+
+        binding.playerMotionLayout.addTransitionListener(object : TransitionAdapter() {
+            override fun onTransitionChange(
+                motionLayout: MotionLayout?,
+                startId: Int,
+                endId: Int,
+                progress: Float
+            ) {
+                mainMotionLayout.progress = abs(progress)
+                eId = endId
+                sId = startId
+            }
+
+            override fun onTransitionCompleted(motionLayout: MotionLayout?, currentId: Int) {
+                if (currentId == eId) {
+                    viewModel.isMiniPlayerVisible.value = true
+                    mainMotionLayout.progress = 1F
+                } else if (currentId == sId) {
+                    viewModel.isMiniPlayerVisible.value = false
+                    mainMotionLayout.progress = 0F
+                }
+            }
+        })
+
+        binding.playerMotionLayout.progress = 1.toFloat()
+        binding.playerMotionLayout.transitionToStart()
     }
 
     /**
@@ -170,6 +228,8 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
         current ?: return
 
         binding.title.text = current.title
+        binding.miniPlayerTitle.text = current.title
+
         binding.uploader.text = current.uploaderName
         binding.uploader.setOnClickListener {
             NavigationHelper.navigateChannel(requireContext(), current.uploaderUrl?.toID())
@@ -186,6 +246,7 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
 
         ImageHelper.getAsync(requireContext(), thumbnailUrl) {
             binding.thumbnail.setImageBitmap(it)
+            binding.miniPlayerThumbnail.setImageBitmap(it)
             binding.thumbnail.visibility = View.VISIBLE
             binding.progress.visibility = View.GONE
         }
@@ -202,6 +263,7 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
      * Update the position, duration and text views belonging to the seek bar
      */
     private fun updateSeekBar() {
+        val binding = _binding ?: return
         val duration = playerService?.getDuration()?.takeIf { it > 0 } ?: let {
             // if there's no duration available, clear everything
             binding.timeBar.value = 0f
@@ -230,18 +292,25 @@ class AudioPlayerFragment : BaseFragment(), AudioPlayerOptions {
 
     private fun handleServiceConnection() {
         playerService?.onIsPlayingChanged = { isPlaying ->
-            binding.playPause.setIconResource(
-                if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play
-            )
+            val iconResource = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play
+            binding.playPause.setIconResource(iconResource)
+            binding.miniPlayerPause.setImageResource(iconResource)
             isPaused = !isPlaying
         }
         initializeSeekBar()
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
     override fun onDestroy() {
         // unregister all listeners and the connected [playerService]
         playerService?.onIsPlayingChanged = null
-        activity?.unbindService(connection)
+        runCatching {
+            activity?.unbindService(connection)
+        }
         PlayingQueue.removeOnTrackChangedListener(onTrackChangeListener)
 
         super.onDestroy()

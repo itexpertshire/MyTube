@@ -1,26 +1,26 @@
 package com.github.libretube.ui.activities
 
-import android.app.PictureInPictureParams
 import android.content.pm.ActivityInfo
 import android.media.session.PlaybackState
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.view.View
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
+import com.github.libretube.compat.PictureInPictureCompat
+import com.github.libretube.compat.PictureInPictureParamsCompat
 import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.ActivityOfflinePlayerBinding
 import com.github.libretube.databinding.ExoStyledPlayerControlViewBinding
 import com.github.libretube.db.DatabaseHolder.Database
 import com.github.libretube.enums.FileType
+import com.github.libretube.extensions.toAndroidUri
 import com.github.libretube.extensions.updateParameters
 import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.helpers.PlayerHelper.loadPlaybackParams
 import com.github.libretube.helpers.WindowHelper
 import com.github.libretube.ui.base.BaseActivity
-import com.github.libretube.ui.extensions.setAspectRatio
 import com.github.libretube.ui.models.PlayerViewModel
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.ExoPlayer
@@ -33,7 +33,6 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.exoplayer2.upstream.FileDataSource
 import com.google.android.exoplayer2.util.MimeTypes
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,7 +48,7 @@ class OfflinePlayerActivity : BaseActivity() {
     private val playerViewModel: PlayerViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        WindowHelper(this).setFullscreen()
+        WindowHelper.toggleFullscreen(this, true)
 
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
 
@@ -63,17 +62,22 @@ class OfflinePlayerActivity : BaseActivity() {
         initializePlayer()
         playVideo()
 
-        requestedOrientation = PlayerHelper.getOrientation(player.videoSize)
+        requestedOrientation = PlayerHelper.getOrientation(
+            player.videoSize.width,
+            player.videoSize.height
+        )
     }
 
     private fun initializePlayer() {
         trackSelector = DefaultTrackSelector(this)
 
         player = ExoPlayer.Builder(this)
+            .setUsePlatformDiagnostics(false)
             .setHandleAudioBecomingNoisy(true)
             .setTrackSelector(trackSelector)
             .setLoadControl(PlayerHelper.getLoadControl())
             .setAudioAttributes(PlayerHelper.getAudioAttributes(), true)
+            .setUsePlatformDiagnostics(false)
             .build().apply {
                 addListener(object : Player.Listener {
                     override fun onEvents(player: Player, events: Player.Events) {
@@ -106,10 +110,6 @@ class OfflinePlayerActivity : BaseActivity() {
         )
     }
 
-    private fun File.toUri(): Uri? {
-        return if (this.exists()) Uri.fromFile(this) else null
-    }
-
     private fun playVideo() {
         lifecycleScope.launch {
             val downloadFiles = withContext(Dispatchers.IO) {
@@ -120,9 +120,9 @@ class OfflinePlayerActivity : BaseActivity() {
             val audio = downloadFiles.firstOrNull { it.type == FileType.AUDIO }
             val subtitle = downloadFiles.firstOrNull { it.type == FileType.SUBTITLE }
 
-            val videoUri = video?.path?.let { File(it).toUri() }
-            val audioUri = audio?.path?.let { File(it).toUri() }
-            val subtitleUri = subtitle?.path?.let { File(it).toUri() }
+            val videoUri = video?.path?.toAndroidUri()
+            val audioUri = audio?.path?.toAndroidUri()
+            val subtitleUri = subtitle?.path?.toAndroidUri()
 
             setMediaSource(videoUri, audioUri, subtitleUri)
 
@@ -142,7 +142,6 @@ class OfflinePlayerActivity : BaseActivity() {
                 .setMimeType(MimeTypes.APPLICATION_SUBRIP)
                 .build()
         }
-        subtitle?.id
 
         when {
             videoUri != null && audioUri != null -> {
@@ -198,18 +197,14 @@ class OfflinePlayerActivity : BaseActivity() {
     }
 
     override fun onUserLeaveHint() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-
-        if (!PlayerHelper.pipEnabled) return
-
-        if (player.playbackState == PlaybackState.STATE_PAUSED) return
-
-        enterPictureInPictureMode(
-            PictureInPictureParams.Builder()
-                .setActions(emptyList())
-                .setAspectRatio(player.videoSize.width, player.videoSize.height)
-                .build()
-        )
+        if (PlayerHelper.pipEnabled && player.playbackState != PlaybackState.STATE_PAUSED) {
+            PictureInPictureCompat.enterPictureInPictureMode(
+                this,
+                PictureInPictureParamsCompat.Builder()
+                    .setAspectRatio(player.videoSize)
+                    .build()
+            )
+        }
 
         super.onUserLeaveHint()
     }
