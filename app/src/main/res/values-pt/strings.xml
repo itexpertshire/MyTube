@@ -199,8 +199,6 @@
     <string name="least_recent">Antigos</string>
     <string name="most_views">Mais vistos</string>
     <string name="least_views">Menos vistos</string>
-    <string name="channel_name_az">Nome do canal (A-Z)</string>
-    <string name="channel_name_za">Nome do canal (Z-A)</string>
     <string name="translate">Tradução</string>
     <string name="error_occurred">Erro</string>
     <string name="network_all">Todas</string>
@@ -289,8 +287,6 @@
     <string name="invalid_filename">Nome de ficheiro inválido!</string>
     <string name="playlists_order">Ordem das listas de reprodução</string>
     <string name="playlistNameReversed">Nome da lista de reprodução (invertido)</string>
-    <string name="recentlyUpdated">Atualizado recentemente</string>
-    <string name="recentlyUpdatedReversed">Atualizado recentemente (invertido)</string>
     <string name="category_preview_description">Para segmentos detalhando conteúdo futuro sem informações adicionais. Se incluir clipes que aparecem apenas aqui, é muito provável que esta seja a categoria errada.</string>
     <string name="sb_markers">Marcadores</string>
     <string name="sb_markers_summary">Marcar segmentos na barra de tempo.</string>
@@ -309,8 +305,8 @@
     <string name="time">Tempo</string>
     <string name="start_time">Início</string>
     <string name="end_time">Fim</string>
-    <string name="notification_time">Restringir o tempo de notificação</string>
-    <string name="notification_time_summary">Limitar o período de tempo em que as notificações de fluxo são mostradas.</string>
+    <string name="notification_time">Restringir tempo da notificação</string>
+    <string name="notification_time_summary">Limitar período de tempo para o qual as notificações são mostradas.</string>
     <string name="navbar_order">Ordem</string>
     <string name="layout">Esquema</string>
     <string name="alternative_player_layout">Esquema alternativo de reprodução</string>
@@ -410,16 +406,16 @@
     <string name="lbry_hls">LBRY HLS</string>
     <string name="lbry_hls_summary">Usar LBRY HLS para emissão, se disponível.</string>
     <string name="uploaderAndVideoCount">%1$s • %2$d vídeos</string>
-    <string name="subscriberAndVideoCounts">%1$s Subscritores • %2$d vídeos</string>
-    <string name="disable_proxy">Desativar o Piped proxy</string>
-    <string name="disable_proxy_summary">Carregar vídeos e imagens diretamente dos servidores do YouTube. Só ative a opção se utilizar uma VPN de qualquer forma! Note que isto pode não funcionar com conteúdo de música YT.</string>
+    <string name="subscriberAndVideoCounts">%1$s subscritores • %2$d vídeos</string>
+    <string name="disable_proxy">Desativar proxy Piped</string>
+    <string name="disable_proxy_summary">Carregar vídeos e imagens diretamente dos servidores YouTube. Apenas deve ativar está opção se estiver a utilizar uma VPN! Esta opção pode não funcionar com conteúdo de música YT.</string>
     <string name="auto_fullscreen_shorts">Ecrã completo automático em vídeos curtos</string>
     <string name="channel_groups">Grupos de canais</string>
     <string name="new_group">Novo</string>
     <string name="group_name">Nome do grupo</string>
     <string name="edit_group">Editar grupo</string>
     <string name="play_automatically">Reproduzir automaticamente</string>
-    <string name="play_automatically_summary">Comece a reproduzir vídeo automaticamente ao selecionar</string>
+    <string name="play_automatically_summary">Iniciar reprodução dos vídeos ao selecionar</string>
     <string name="fullscreen_gestures">Gestos de entrada/saída em ecrã inteiro</string>
     <string name="go_to_video">Ir para o vídeo</string>
     <plurals name="channel_new_streams">
@@ -428,5 +424,13 @@
         <item quantity="other">%d novas emissões</item>
     </plurals>
     <string name="show_stream_thumbnails">Mostrar miniaturas do vídeo</string>
-    <string name="show_stream_thumbnails_summary">Mostrar as miniaturas de novas streams. A ativação disto irá consumir dados adicionais.</string>
+    <string name="show_stream_thumbnails_summary">Mostrar miniaturas dos novos vídeos. A ativação implica a utilização de dados.</string>
+    <string name="unlimited_search_history">Histórico de pesquisa ilimitado</string>
+    <string name="duration">Duração</string>
+    <string name="duration_reversed">Duração (invertida)</string>
+    <string name="shorts_notifications">Notificação para vídeos curtos</string>
+    <string name="creation_date">Data de criação</string>
+    <string name="alphabetic">Alfabético</string>
+    <string name="alphabetic_reversed">Alfabética (invertida)</string>
+    <string name="creation_date_reversed">Data de criação (invertida)</string>
 </resources>

@@ -210,8 +210,6 @@
     <string name="playerAudioQuality">Качество звука</string>
     <string name="notifications">Уведомления</string>
     <string name="irreversible">Вы уверены\? Это действие нельзя отменить!</string>
-    <string name="channel_name_az">Название канала (А-Я)</string>
-    <string name="channel_name_za">Название канала (Я-А)</string>
     <string name="least_recent">Сначала старые</string>
     <string name="most_recent">Сначала новые</string>
     <string name="most_views">Больше просмотров</string>
@@ -291,8 +289,6 @@
     <string name="playlists_order">Порядок плейлистов</string>
     <string name="added_to_playlist">Добавлено в плейлист</string>
     <string name="playlistNameReversed">Название плейлиста (перевернутое)</string>
-    <string name="recentlyUpdated">Недавно обновленный</string>
-    <string name="recentlyUpdatedReversed">Недавно обновлено (перевернутое)</string>
     <string name="time_code">Временной код (секунды)</string>
     <string name="queue">Очередь</string>
     <string name="sb_markers">Маркеры</string>
@@ -432,4 +428,12 @@
     </plurals>
     <string name="show_stream_thumbnails">Показать миниатюры видео</string>
     <string name="show_stream_thumbnails_summary">Показывать миниатюры новых видео. Включение этой функции будет потреблять дополнительные данные.</string>
+    <string name="unlimited_search_history">Неограниченная история поиска</string>
+    <string name="duration_reversed">Продолжительность (обратная)</string>
+    <string name="duration">Продолжительность</string>
+    <string name="shorts_notifications">Уведомления для shorts</string>
+    <string name="alphabetic">Алфавитный</string>
+    <string name="creation_date">Дата создания</string>
+    <string name="creation_date_reversed">Дата создания (перевернутая)</string>
+    <string name="alphabetic_reversed">Алфавитный (обратный)</string>
 </resources>

@@ -77,21 +77,21 @@ class VideosAdapter(
         val layoutInflater = LayoutInflater.from(parent.context)
         return when {
             viewType == CAUGHT_UP_TYPE -> VideosViewHolder(
-                AllCaughtUpRowBinding.inflate(layoutInflater, parent, false)
+                AllCaughtUpRowBinding.inflate(layoutInflater, parent, false),
             )
             forceMode in listOf(
                 ForceMode.TRENDING,
                 ForceMode.RELATED,
-                ForceMode.HOME
+                ForceMode.HOME,
             ) -> VideosViewHolder(
-                TrendingRowBinding.inflate(layoutInflater, parent, false)
+                TrendingRowBinding.inflate(layoutInflater, parent, false),
             )
             forceMode == ForceMode.CHANNEL -> VideosViewHolder(
-                VideoRowBinding.inflate(layoutInflater, parent, false)
+                VideoRowBinding.inflate(layoutInflater, parent, false),
             )
             PreferenceHelper.getBoolean(
                 PreferenceKeys.ALTERNATIVE_VIDEOS_LAYOUT,
-                false
+                false,
             ) -> VideosViewHolder(VideoRowBinding.inflate(layoutInflater, parent, false))
             else -> VideosViewHolder(TrendingRowBinding.inflate(layoutInflater, parent, false))
         }
@@ -147,7 +147,7 @@ class VideosAdapter(
                 R.string.trending_views,
                 video.uploaderName,
                 video.views.formatShort(),
-                video.uploaded?.let { TextUtils.formatRelativeDate(root.context, it) }
+                video.uploaded?.let { TextUtils.formatRelativeDate(root.context, it) },
             )
             video.duration?.let { thumbnailDuration.setFormattedDuration(it, video.isShort) }
             channelImage.setOnClickListener {
@@ -164,7 +164,7 @@ class VideosAdapter(
                 VideoOptionsBottomSheet(videoId, videoName, this@VideosAdapter)
                     .show(
                         (root.context as BaseActivity).supportFragmentManager,
-                        VideoOptionsBottomSheet::class.java.name
+                        VideoOptionsBottomSheet::class.java.name,
                     )
 
                 true
@@ -180,7 +180,7 @@ class VideosAdapter(
                 video.views.formatShort(),
                 video.uploaded?.let {
                     TextUtils.SEPARATOR + TextUtils.formatRelativeDate(root.context, it)
-                }
+                },
             )
 
             thumbnailDuration.text = video.duration?.let { DateUtils.formatElapsedTime(it) }
@@ -205,7 +205,7 @@ class VideosAdapter(
                 VideoOptionsBottomSheet(videoId, videoName, this@VideosAdapter)
                     .show(
                         (root.context as BaseActivity).supportFragmentManager,
-                        VideoOptionsBottomSheet::class.java.name
+                        VideoOptionsBottomSheet::class.java.name,
                     )
                 true
             }
@@ -219,13 +219,13 @@ class VideosAdapter(
             ROW,
             CHANNEL,
             RELATED,
-            HOME
+            HOME,
         }
 
         fun getLayout(context: Context): LayoutManager {
             return if (PreferenceHelper.getBoolean(
                     PreferenceKeys.ALTERNATIVE_VIDEOS_LAYOUT,
-                    false
+                    false,
                 )
             ) {
                 LinearLayoutManager(context)
@@ -234,8 +234,8 @@ class VideosAdapter(
                     context,
                     PreferenceHelper.getString(
                         PreferenceKeys.GRID_COLUMNS,
-                        context.resources.getInteger(R.integer.grid_items).toString()
-                    ).toInt()
+                        context.resources.getInteger(R.integer.grid_items).toString(),
+                    ).toInt(),
                 )
             }
         }

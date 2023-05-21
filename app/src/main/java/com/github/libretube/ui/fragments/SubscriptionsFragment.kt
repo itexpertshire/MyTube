@@ -26,10 +26,10 @@ import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.ui.adapters.LegacySubscriptionAdapter
 import com.github.libretube.ui.adapters.SubscriptionChannelAdapter
 import com.github.libretube.ui.adapters.VideosAdapter
-import com.github.libretube.ui.dialogs.ChannelGroupsDialog
 import com.github.libretube.ui.models.SubscriptionsViewModel
 import com.github.libretube.ui.sheets.BaseBottomSheet
 import com.github.libretube.util.PlayingQueue
+import com.github.libretube.ui.sheets.ChannelGroupsSheet
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,7 +58,7 @@ class SubscriptionsFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentSubscriptionsBinding.inflate(inflater, container, false)
         return binding.root
@@ -69,7 +69,7 @@ class SubscriptionsFragment : Fragment() {
 
         val loadFeedInBackground = PreferenceHelper.getBoolean(
             PreferenceKeys.SAVE_FEED,
-            false
+            false,
         )
 
         // update the text according to the current order and filter
@@ -176,6 +176,8 @@ class SubscriptionsFragment : Fragment() {
     private suspend fun initChannelGroups() {
         channelGroups = DatabaseHolder.Database.subscriptionGroupsDao().getAll()
 
+        val binding = _binding ?: return
+
         binding.chipAll.isChecked = true
         binding.channelGroups.removeAllViews()
 
@@ -197,7 +199,7 @@ class SubscriptionsFragment : Fragment() {
         }
 
         binding.editGroups.setOnClickListener {
-            ChannelGroupsDialog(channelGroups.toMutableList()) {
+            ChannelGroupsSheet(channelGroups.toMutableList()) {
                 lifecycleScope.launch { initChannelGroups() }
             }.show(childFragmentManager, null)
         }
@@ -250,6 +252,7 @@ class SubscriptionsFragment : Fragment() {
         subscriptionsAdapter = VideosAdapter(
             sortedFeed.toMutableList(),
             showAllAtOnce = false,
+            showAllAtOnce = false,
             hideWatched = PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false)
         )
         binding.subFeed.adapter = subscriptionsAdapter
@@ -278,7 +281,7 @@ class SubscriptionsFragment : Fragment() {
 
         val legacySubscriptions = PreferenceHelper.getBoolean(
             PreferenceKeys.LEGACY_SUBSCRIPTIONS,
-            false
+            false,
         )
 
         binding.subChannels.layoutManager = if (legacySubscriptions) {
@@ -286,8 +289,8 @@ class SubscriptionsFragment : Fragment() {
                 context,
                 PreferenceHelper.getString(
                     PreferenceKeys.LEGACY_SUBSCRIPTIONS_COLUMNS,
-                    "4"
-                ).toInt()
+                    "4",
+                ).toInt(),
             )
         } else {
             LinearLayoutManager(context)
@@ -298,7 +301,7 @@ class SubscriptionsFragment : Fragment() {
             LegacySubscriptionAdapter(viewModel.subscriptions.value!!)
         } else {
             SubscriptionChannelAdapter(
-                viewModel.subscriptions.value!!.toMutableList()
+                viewModel.subscriptions.value!!.toMutableList(),
             )
         }
 

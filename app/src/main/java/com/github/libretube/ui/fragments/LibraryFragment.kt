@@ -43,7 +43,7 @@ class LibraryFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentLibraryBinding.inflate(inflater, container, false)
         return binding.root
@@ -125,7 +125,7 @@ class LibraryFragment : Fragment() {
     }
 
     private fun fetchPlaylists() {
-        binding.playlistRefresh.isRefreshing = true
+        _binding?.playlistRefresh?.isRefreshing = true
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.CREATED) {
                 var playlists = try {
@@ -143,18 +143,18 @@ class LibraryFragment : Fragment() {
 
                 if (playlists.isNotEmpty()) {
                     playlists = when (
-                        PreferenceHelper.getString(PreferenceKeys.PLAYLISTS_ORDER, "recent")
+                        PreferenceHelper.getString(PreferenceKeys.PLAYLISTS_ORDER, "creation_date")
                     ) {
-                        "recent" -> playlists
-                        "recent_reversed" -> playlists.reversed()
-                        "name" -> playlists.sortedBy { it.name?.lowercase() }
-                        "name_reversed" -> playlists.sortedBy { it.name?.lowercase() }.reversed()
+                        "creation_date" -> playlists
+                        "creation_date_reversed" -> playlists.reversed()
+                        "alphabetic" -> playlists.sortedBy { it.name?.lowercase() }
+                        "alphabetic_reversed" -> playlists.sortedBy { it.name?.lowercase() }.reversed()
                         else -> playlists
                     }
 
                     val playlistsAdapter = PlaylistsAdapter(
                         playlists.toMutableList(),
-                        PlaylistsHelper.getPrivatePlaylistType()
+                        PlaylistsHelper.getPrivatePlaylistType(),
                     )
 
                     // listen for playlists to become deleted

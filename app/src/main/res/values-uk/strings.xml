@@ -57,7 +57,7 @@
     <string name="addToPlaylist">Додати в добірку</string>
     <string name="success">Готово.</string>
     <string name="fail">Невдача :(</string>
-    <string name="about">Про</string>
+    <string name="about">Про LibreTube</string>
     <string name="changeLanguage">Мова</string>
     <string name="systemLanguage">Системна</string>
     <string name="systemDefault">Системна</string>
@@ -146,7 +146,7 @@
     <string name="video">Відео</string>
     <string name="player_autoplay">Автоматичне відтворення</string>
     <string name="downloading">Завантаження…</string>
-    <string name="turnInternetOn">Будь ласка, увімкніть Wi-Fi або мобільний дані для підключення до Інтернету.</string>
+    <string name="turnInternetOn">Увімкніть Wi-Fi або мобільні дані для з\'єднання з інтернетом.</string>
     <string name="open">Відкрити…</string>
     <string name="reset">Відновити стандартні налаштування</string>
     <string name="reset_message">Стерти всі налаштування і вийти з облікового запису\?</string>
@@ -173,8 +173,8 @@
     <string name="portrait">Портретна</string>
     <string name="instance_name">Назва екземпляра</string>
     <string name="playerVideoFormat">Формат відео для програвача</string>
-    <string name="auth_instance">Сервер аутентифікації</string>
-    <string name="auth_instance_summary">Використовувати інший сервер для аутентифікації.</string>
+    <string name="auth_instance">Сервер автентифікації</string>
+    <string name="auth_instance_summary">Використовувати інший сервер для автентифікації.</string>
     <string name="aspect_ratio">Співвідношення сторін відео</string>
     <string name="auto_rotation">Автоповорот</string>
     <string name="chapters">Епізоди</string>
@@ -205,7 +205,6 @@
     <string name="playerAudioQuality">Якість звуку</string>
     <string name="notify_new_streams">Показувати сповіщення про нові трансляції</string>
     <string name="notifications">Сповіщення</string>
-    <string name="channel_name_za">Назва каналу (Я-А)</string>
     <string name="take_a_break">Час зробити перерву</string>
     <string name="no_subtitles_available">Субтитри відсутні</string>
     <string name="yt_shorts">Shorts</string>
@@ -214,7 +213,7 @@
     <string name="required_network">Необхідне з\'єднання</string>
     <string name="network_metered">Лімітоване</string>
     <string name="repeat_mode_current">Поточний</string>
-    <string name="picture_in_picture">Зображення в зображенні</string>
+    <string name="picture_in_picture">Картинка в картинці</string>
     <string name="new_videos_badge_summary">Показувати значок із кількістю нових відео, якщо такі є.</string>
     <string name="repeat_mode_none">Немає</string>
     <string name="sb_skip_manual">Пропустити вручну</string>
@@ -262,7 +261,6 @@
     <string name="checking_frequency">Перевірка кожного …</string>
     <string name="most_views">Найбільше переглядів</string>
     <string name="least_views">Найменше переглядів</string>
-    <string name="channel_name_az">Назва каналу (А-Я)</string>
     <string name="skip_buttons">Кнопки пропуску</string>
     <string name="skip_buttons_summary">Показувати кнопки для переходу до наступного або попереднього відео.</string>
     <string name="history_size">Максимальний розмір історії</string>
@@ -288,8 +286,6 @@
     <string name="mobile_data">Мобільні дані</string>
     <string name="filename">Назва файлу</string>
     <string name="invalid_filename">Неприпустима назва файлу!</string>
-    <string name="recentlyUpdated">Нещодавно оновлені</string>
-    <string name="recentlyUpdatedReversed">Нещодавно оновлені (зворотний порядок)</string>
     <string name="playlistNameReversed">Назва добірки (у зворотному порядку)</string>
     <string name="playlists_order">Порядок добірок</string>
     <string name="time_code">Часовий код (секунд)</string>
@@ -432,4 +428,12 @@
     </plurals>
     <string name="show_stream_thumbnails_summary">Показувати мініатюри нових трансляцій. Увімкнення цієї опції споживає додаткові дані.</string>
     <string name="show_stream_thumbnails">Показувати мініатюри трансляцій</string>
+    <string name="unlimited_search_history">Необмежена історія запитів</string>
+    <string name="duration">Тривалість</string>
+    <string name="duration_reversed">Тривалість (у зворотному порядку)</string>
+    <string name="shorts_notifications">Сповіщення для shorts</string>
+    <string name="alphabetic">Абетковий</string>
+    <string name="alphabetic_reversed">Абетковий (зворотний)</string>
+    <string name="creation_date">Дата створення</string>
+    <string name="creation_date_reversed">Дата створення (зворотна)</string>
 </resources>

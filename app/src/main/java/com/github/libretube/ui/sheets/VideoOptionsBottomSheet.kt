@@ -45,7 +45,7 @@ class VideoOptionsBottomSheet(
             getString(R.string.playOnBackground),
             getString(R.string.addToPlaylist),
             getString(R.string.download),
-            getString(R.string.share)
+            getString(R.string.share),
         )
 
         // Check whether the player is running and add queue options
@@ -70,7 +70,7 @@ class VideoOptionsBottomSheet(
                 getString(R.string.addToPlaylist) -> {
                     AddToPlaylistDialog(videoId).show(
                         parentFragmentManager,
-                        AddToPlaylistDialog::class.java.name
+                        AddToPlaylistDialog::class.java.name,
                     )
                 }
                 getString(R.string.download) -> {
@@ -126,7 +126,7 @@ class VideoOptionsBottomSheet(
                                 .joinToString(", ") { it::class.java.name.toString() }
                         )
                         (fragment as? SubscriptionsFragment)?.subscriptionsAdapter?.removeItemById(
-                            videoId
+                            videoId,
                         )
                     }
                 }

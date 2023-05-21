@@ -27,7 +27,7 @@ object DatabaseHelper {
             streams.uploaderUrl.toID(),
             streams.uploaderAvatar,
             streams.thumbnailUrl,
-            streams.duration
+            streams.duration,
         )
 
         //Also remove from recommendation table

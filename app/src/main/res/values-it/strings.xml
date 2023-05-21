@@ -105,7 +105,7 @@
     <string name="piped">Piped</string>
     <string name="youtube">YouTube</string>
     <string name="playOnBackground">Riproduci in sottofondo</string>
-    <string name="downloads">Scaricamenti</string>
+    <string name="downloads">Scaricati</string>
     <string name="advanced_summary">Download e ripristino</string>
     <string name="update_available">La versione %1$s è disponibile</string>
     <string name="update_available_text">Nuovo aggiornamento disponibile. Clicca per aprire la pagina delle pubblicazioni su GitHub.</string>
@@ -214,7 +214,6 @@
     <string name="checking_frequency">Controlla ogni…</string>
     <string name="most_views">Più visti</string>
     <string name="least_views">Meno visti</string>
-    <string name="channel_name_az">Nome canale (A-Z)</string>
     <string name="network_all">Tutto</string>
     <string name="network_wifi">Solo su Wi-Fi</string>
     <string name="network_metered">A consumo</string>
@@ -238,7 +237,6 @@
     <string name="default_subtitle_language">Lingua dei sottotitoli</string>
     <string name="irreversible">Sei sicuro\? Non può essere annullato!</string>
     <string name="most_recent">Più recenti</string>
-    <string name="channel_name_za">Nome canale (Z-A)</string>
     <string name="export_subscriptions">Esporta iscrizioni</string>
     <string name="skip_buttons">Pulsanti di skip</string>
     <string name="skip_buttons_summary">Mostra pulsanti per saltare al video successivo o precedente.</string>
@@ -261,7 +259,7 @@
     <string name="break_reminder_time">Minuti prima dell\'avviso</string>
     <string name="device_info">Info sul dispositivo</string>
     <string name="audio_video_summary">Qualità e formato</string>
-    <string name="delete">Elimina dagli scaricamenti</string>
+    <string name="delete">Elimina dagli scaricati</string>
     <string name="renamePlaylist">Rinomina la playlist</string>
     <string name="new_videos_badge">Indicatore per i nuovi video</string>
     <string name="new_videos_badge_summary">Mostra una notifica con il numero dei nuovi video, se ce ne sono.</string>
@@ -289,9 +287,7 @@
     <string name="filename">Nome del file</string>
     <string name="invalid_filename">Nome del file non valido!</string>
     <string name="playlists_order">Ordine delle playlist</string>
-    <string name="playlistNameReversed">Nome della playlist (invertito)</string>
-    <string name="recentlyUpdated">Aggiornate di recente</string>
-    <string name="recentlyUpdatedReversed">Aggiornate di recente (invertito)</string>
+    <string name="playlistNameReversed">Nome playlist (invertito)</string>
     <string name="added_to_playlist">Aggiunto alla playlist</string>
     <string name="queue">Coda</string>
     <string name="sb_markers">Marcatori</string>
@@ -429,4 +425,12 @@
         <item quantity="many">%d nuovi video</item>
         <item quantity="other">%d nuovi video</item>
     </plurals>
+    <string name="unlimited_search_history">Cronologia di ricerca infinita</string>
+    <string name="duration">Durata</string>
+    <string name="duration_reversed">Durata (invertito)</string>
+    <string name="shorts_notifications">Notifiche per gli Short</string>
+    <string name="creation_date_reversed">Data di creazione (invertito)</string>
+    <string name="alphabetic_reversed">Alfabetico (invertito)</string>
+    <string name="creation_date">Data di creazione</string>
+    <string name="alphabetic">Alfabetico</string>
 </resources>

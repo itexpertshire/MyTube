@@ -15,7 +15,7 @@ import com.github.libretube.ui.viewholders.PlaylistsViewHolder
 
 class PlaylistsAdapter(
     private val playlists: MutableList<Playlists>,
-    private val playlistType: PlaylistType
+    private val playlistType: PlaylistType,
 ) : RecyclerView.Adapter<PlaylistsViewHolder>() {
 
     override fun getItemCount(): Int {
@@ -40,7 +40,8 @@ class PlaylistsAdapter(
             // set imageview drawable as empty playlist if imageview empty
             if (playlist.thumbnail.orEmpty().split("/").size <= 4) {
                 playlistThumbnail.setImageResource(R.drawable.ic_empty_playlist)
-                playlistThumbnail.setBackgroundColor(R.attr.colorSurface)
+                playlistThumbnail
+                    .setBackgroundColor(com.google.android.material.R.attr.colorSurface)
             } else {
                 ImageHelper.loadImage(playlist.thumbnail, playlistThumbnail)
             }
@@ -63,11 +64,11 @@ class PlaylistsAdapter(
                     onRename = {
                         playlistTitle.text = it
                         playlist.name = it
-                    }
+                    },
                 )
                 playlistOptionsDialog.show(
                     (root.context as BaseActivity).supportFragmentManager,
-                    PlaylistOptionsBottomSheet::class.java.name
+                    PlaylistOptionsBottomSheet::class.java.name,
                 )
                 true
             }

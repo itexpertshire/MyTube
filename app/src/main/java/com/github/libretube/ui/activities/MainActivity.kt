@@ -38,6 +38,7 @@ import com.github.libretube.helpers.WindowHelper
 import com.github.libretube.services.ClosingService
 import com.github.libretube.ui.base.BaseActivity
 import com.github.libretube.ui.dialogs.ErrorDialog
+import com.github.libretube.ui.fragments.AudioPlayerFragment
 import com.github.libretube.ui.fragments.DownloadsFragment
 import com.github.libretube.ui.fragments.PlayerFragment
 import com.github.libretube.ui.models.PlayerViewModel
@@ -142,6 +143,8 @@ class MainActivity : BaseActivity() {
             false
         }
 
+        if (binding.bottomNav.menu.children.none { it.itemId == startFragmentId }) deselectBottomBarItems()
+
         binding.toolbar.title = ThemeHelper.getStyledAppName(this)
 
         // handle error logs
@@ -191,6 +194,17 @@ class MainActivity : BaseActivity() {
     }
 
     /**
+     * Deselect all bottom bar items
+     */
+    fun deselectBottomBarItems() {
+        binding.bottomNav.menu.setGroupCheckable(0, true, false)
+        for (child in binding.bottomNav.menu.children) {
+            child.isChecked = false
+        }
+        binding.bottomNav.menu.setGroupCheckable(0, true, true)
+    }
+
+    /**
      * Try to find a scroll or recycler view and scroll it back to the top
      */
     private fun tryScrollToTop(viewGroup: ViewGroup?) {
@@ -232,7 +246,7 @@ class MainActivity : BaseActivity() {
     private fun setupSubscriptionsBadge() {
         if (!PreferenceHelper.getBoolean(
                 PreferenceKeys.NEW_VIDEOS_BADGE,
-                false
+                false,
             )
         ) {
             return
@@ -249,8 +263,14 @@ class MainActivity : BaseActivity() {
             if (lastSeenVideoIndex < 1) return@observe
             binding.bottomNav.getOrCreateBadge(R.id.subscriptionsFragment).apply {
                 number = lastSeenVideoIndex
-                backgroundColor = ThemeHelper.getThemeColor(this@MainActivity, R.attr.colorPrimary)
-                badgeTextColor = ThemeHelper.getThemeColor(this@MainActivity, R.attr.colorOnPrimary)
+                backgroundColor = ThemeHelper.getThemeColor(
+                    this@MainActivity,
+                    androidx.appcompat.R.attr.colorPrimary,
+                )
+                badgeTextColor = ThemeHelper.getThemeColor(
+                    this@MainActivity,
+                    com.google.android.material.R.attr.colorOnPrimary,
+                )
             }
         }
     }
@@ -304,7 +324,7 @@ class MainActivity : BaseActivity() {
                 val destIds = listOf(
                     R.id.searchResultFragment,
                     R.id.channelFragment,
-                    R.id.playlistFragment
+                    R.id.playlistFragment,
                 )
                 if (navController.currentDestination?.id in destIds && newText.isNullOrEmpty()) {
                     return false
@@ -327,7 +347,7 @@ class MainActivity : BaseActivity() {
                     navController.navigate(R.id.searchFragment)
                 }
                 item.setShowAsAction(
-                    MenuItem.SHOW_AS_ACTION_ALWAYS or MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW
+                    MenuItem.SHOW_AS_ACTION_ALWAYS or MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW,
                 )
                 return true
             }
@@ -396,26 +416,26 @@ class MainActivity : BaseActivity() {
         intent?.getStringExtra(IntentData.channelId)?.let {
             navController.navigate(
                 R.id.channelFragment,
-                bundleOf(IntentData.channelId to it)
+                bundleOf(IntentData.channelId to it),
             )
         }
         intent?.getStringExtra(IntentData.channelName)?.let {
             navController.navigate(
                 R.id.channelFragment,
-                bundleOf(IntentData.channelName to it)
+                bundleOf(IntentData.channelName to it),
             )
         }
         intent?.getStringExtra(IntentData.playlistId)?.let {
             navController.navigate(
                 R.id.playlistFragment,
-                bundleOf(IntentData.playlistId to it)
+                bundleOf(IntentData.playlistId to it),
             )
         }
         intent?.getStringExtra(IntentData.videoId)?.let {
             NavigationHelper.navigateVideo(
                 context = this,
                 videoId = it,
-                timeStamp = intent?.getLongExtra(IntentData.timeStamp, 0L)
+                timeStamp = intent?.getLongExtra(IntentData.timeStamp, 0L),
             )
         }
 
@@ -456,6 +476,7 @@ class MainActivity : BaseActivity() {
                 getConstraintSet(R.id.start).constrainHeight(R.id.player, 0)
                 enableTransition(R.id.yt_transition, true)
             }
+            (fragment as? AudioPlayerFragment)?.binding?.playerMotionLayout?.transitionToEnd()
         }
 
         val playerViewModel = ViewModelProvider(this)[PlayerViewModel::class.java]

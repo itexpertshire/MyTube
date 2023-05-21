@@ -92,7 +92,7 @@
     <string name="category_outro">Kartu akhir dan kredit</string>
     <string name="category_outro_description">Info mengikuti dengan akhir video. Bukan untuk kesimpulan dengan info.</string>
     <string name="category_interaction_description">Saat ada pengingat singkat untuk meminta suka, berlangganan atau mengikuti di tengah konten. Jika panjang atau tentang sesuatu yang spesifik, sebaiknya pakai kategori promosi diri sendiri.</string>
-    <string name="piped">Piped</string>
+    <string name="piped">Disalurkan</string>
     <string name="playOnBackground">Putar di latar belakang</string>
     <string name="license">Lisensi</string>
     <string name="color_accent">Aksen</string>
@@ -137,8 +137,6 @@
     <string name="most_recent">Paling baru</string>
     <string name="most_views">Paling banyak tampilan</string>
     <string name="least_views">Paling sedikit tontonan</string>
-    <string name="channel_name_az">Nama Saluran (A-Z)</string>
-    <string name="channel_name_za">Nama Saluran (Z-A)</string>
     <string name="defaultIcon">Bawaan</string>
     <string name="torchIcon">Obor kece</string>
     <string name="shapedIcon">Berbentuk aneh</string>
@@ -290,8 +288,6 @@
     <string name="invalid_filename">Nama file tidak absah!</string>
     <string name="playlists_order">Urutan daftar main</string>
     <string name="playlistNameReversed">Nama daftar main (dibalik)</string>
-    <string name="recentlyUpdated">Diperbarui baru-baru ini</string>
-    <string name="recentlyUpdatedReversed">Diperbarui baru-baru ini (dibalik)</string>
     <string name="time_code">Kode waktu (detik)</string>
     <string name="added_to_playlist">Ditambahkan ke daftar putar</string>
     <string name="queue">Antrean</string>
@@ -423,4 +419,12 @@
     </plurals>
     <string name="show_stream_thumbnails">Tampilkan gambar kecil saluran</string>
     <string name="show_stream_thumbnails_summary">Menampilkan gambar kecil saluran baru. Mengaktifkan ini akan membutuhkan lebih banyak data.</string>
+    <string name="unlimited_search_history">Riwayat pencarian tidak terbatas</string>
+    <string name="duration">Durasi</string>
+    <string name="duration_reversed">Durasi (dibalik)</string>
+    <string name="shorts_notifications">Notifikasi untuk video shorts</string>
+    <string name="alphabetic">Abjad</string>
+    <string name="alphabetic_reversed">Abjad (dibalik)</string>
+    <string name="creation_date_reversed">Tanggal pembuatan (dibalik)</string>
+    <string name="creation_date">Tanggal pembuatan</string>
 </resources>
