@@ -292,6 +292,22 @@ class MainActivity : BaseActivity() {
         return super.onPrepareOptionsMenu(menu)
     }
 
+    private fun isSearchInProgress(): Boolean {
+        if (!::navController.isInitialized) return false
+        val id = navController.currentDestination?.id ?: return false
+        return id in listOf(R.id.searchFragment, R.id.searchResultFragment)
+    }
+
+    override fun invalidateMenu() {
+        // Don't invalidate menu when in search in progress
+        // this is a workaround as there is bug in android code
+        // details of bug: https://issuetracker.google.com/issues/244336571
+        if (isSearchInProgress()) {
+            return
+        }
+        super.invalidateMenu()
+    }
+
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.action_bar, menu)
@@ -366,7 +382,8 @@ class MainActivity : BaseActivity() {
                     this@MainActivity.onBackPressedDispatcher.onBackPressed()
                 }
 
-                return true
+                // Suppress collapsing of search when search in progress.
+                return !isSearchInProgress()
             }
         })
         return super.onCreateOptionsMenu(menu)
