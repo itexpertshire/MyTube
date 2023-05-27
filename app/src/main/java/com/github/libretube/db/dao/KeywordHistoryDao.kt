@@ -12,8 +12,8 @@ interface KeywordHistoryDao {
     @Query("SELECT * FROM keywordHistoryItem")
     suspend fun getAll(): List<KeywordHistoryItem>
 
-    @Query("SELECT * FROM keywordHistoryItem WHERE fetchLastTime < datetime('now', 'now', '-1 day')")
-    fun getOutdatedKeywords(): List<KeywordHistoryItem>
+    @Query("SELECT * FROM keywordHistoryItem WHERE fetchLastTime > :dateVal")
+    fun getOutdatedKeywords(dateVal: Date): List<KeywordHistoryItem>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(keywordHistoryItems: List<KeywordHistoryItem>)

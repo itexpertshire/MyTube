@@ -18,7 +18,7 @@ import com.github.libretube.helpers.PreferenceHelper
 import kotlinx.coroutines.runBlocking
 import retrofit2.HttpException
 import java.io.IOException
-
+import java.sql.Date
 
 
 @SuppressLint("SpecifyJobSchedulerIdRange")
@@ -87,7 +87,10 @@ class RecommendationService : JobService() {
                 blockedList.forEach { it ->  DatabaseHolder.Database.keywordHistoryDao().deleteByKeyword(it.id)
                                              DatabaseHolder.Database.recommendStreamItemDao().deleteByTitle(it.id)
                 }
-                keywordHistory = DatabaseHolder.Database.keywordHistoryDao().getOutdatedKeywords()
+
+                // Current Date -1 Day
+                val refDateTime = Date(System.currentTimeMillis()-24*60*60*1000)
+                keywordHistory = DatabaseHolder.Database.keywordHistoryDao().getOutdatedKeywords(refDateTime)
 
                 Log.d("Amit","$keywordHistory")
 
@@ -108,10 +111,11 @@ class RecommendationService : JobService() {
                                 runBlocking {
                                     val response =
                                         RetrofitInstance.api.getSearchResults(q, "videos")
-                                            val responseFilteredItems = response.items.filter { it1 -> it1.verified == true && it1.views > 10000 && it1.uploaderVerified == true && it1.subscribers > 500000 }
+                                    Log.d("Amit", "Response $response")
+                                            val responseFilteredItems = response.items.filter { it1 -> it1.uploaderVerified == true && it1.views > 100000 }
 
                                            //Remove titles from recommendation list if it's present in blocked list
-                                    responseFilteredItems.dropWhile { it -> it.title?.let { it1-> DatabaseHelper.isBlocked(it1)} == true }
+                                            responseFilteredItems.dropWhile { it -> it.title?.let { it1-> DatabaseHelper.isBlocked(it1)} == true }
                                     Log.d("Amit", "Search Result" + responseFilteredItems.size.toString())
 
                                     if (responseFilteredItems.size < RECOMMENDATION_PER_KEYWORD_MAX_CNT){

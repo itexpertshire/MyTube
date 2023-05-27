@@ -36,4 +36,7 @@ interface DownloadDao {
     @Transaction
     @Delete
     suspend fun deleteDownload(download: Download)
+
+    @Query("SELECT * FROM downloaditem WHERE videoId = :videoId")
+    suspend fun findDownloadItemsByVideoId(videoId: String): List<DownloadItem>
 }

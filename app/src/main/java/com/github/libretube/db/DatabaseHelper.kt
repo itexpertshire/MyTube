@@ -99,12 +99,18 @@ object DatabaseHelper {
     }
 
     suspend fun isBlocked(title: String) : Boolean = withContext(Dispatchers.IO) {
-        if (Database.blockListDao().getBlockListItem(title).id.isNotEmpty()){
+
+
+
+        Database.blockListDao().getBlockListItem(title)?.let {
+            println("not null")
             return@withContext true
-            }
-        else {
+        } ?: run {
+            println("null")
             return@withContext false
         }
+
+
     }
     suspend fun addToBlockList(videoId: String) = withContext(Dispatchers.IO) {
         val stream = Database.recommendStreamItemDao().getById(videoId)
@@ -134,14 +140,18 @@ object DatabaseHelper {
 
     suspend fun addRecommendation(streamItem: List<RecommendStreamItem>) = withContext(Dispatchers.IO) {
         Log.d("Amit","Recommendation Table Count- "+Database.recommendStreamItemDao().getAll().size)
+        Log.d("Amit","Recomendation to be added - "+streamItem.size)
         //if item is already in watched list then don't add into recommendation
         streamItem.forEach { it ->
             //get the video id
             val videoId = it.url.replace("/watch?v=","")
-            if (Database.watchHistoryDao().getVideo(videoId).videoId.isNotEmpty()) {
-                return@forEach
+            val watchHist = Database.watchHistoryDao().getVideo(videoId)
+            watchHist ?: run {
+                Log.d("Amit","addRecommendation - watchHist is null")
+                Database.recommendStreamItemDao().insert(it)
             }
-            Database.recommendStreamItemDao().insert(it)
+
+
         }
 
 

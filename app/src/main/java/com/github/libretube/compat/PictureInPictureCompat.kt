@@ -4,11 +4,12 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 
 object PictureInPictureCompat {
     fun isPictureInPictureAvailable(context: Context): Boolean {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+                context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
     }
 
     fun isInPictureInPictureMode(activity: Activity): Boolean {
@@ -17,6 +18,13 @@ object PictureInPictureCompat {
 
     fun setPictureInPictureParams(activity: Activity, params: PictureInPictureParamsCompat) {
         if (isPictureInPictureAvailable(activity)) {
+            if (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    params.toPictureInPictureParams().actions.isEmpty()
+                } else {
+
+                    false
+                }
+            ) throw IllegalArgumentException()
             activity.setPictureInPictureParams(params.toPictureInPictureParams())
         }
     }

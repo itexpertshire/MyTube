@@ -9,6 +9,7 @@ import com.github.libretube.db.DatabaseHolder
 import com.github.libretube.db.obj.Download
 import com.github.libretube.db.obj.DownloadItem
 import com.github.libretube.enums.ShareObjectType
+import com.github.libretube.helpers.DownloadHelper
 import com.github.libretube.helpers.NavigationHelper
 import com.github.libretube.obj.ShareData
 import com.github.libretube.services.OfflinePlayerService
@@ -29,6 +30,7 @@ class DownloadOptionsBottomSheet(
             R.string.go_to_video,
             R.string.share,
             R.string.delete,
+            R.string.retry,
         ).map { getString(it) }
         setSimpleItems(options) { selectedIndex ->
             when (selectedIndex) {
@@ -63,6 +65,39 @@ class DownloadOptionsBottomSheet(
                         }
                         .setNegativeButton(R.string.cancel, null)
                         .show()
+                }
+                4 -> {
+
+                    val downloadItems = DatabaseHolder.Database.downloadDao().findDownloadItemsByVideoId(download.videoId)
+                    var vId=""
+                    var vFileName=""
+                    var vFormat=""
+                    var vQuality=""
+                    var aFormat=""
+                    var aQuality=""
+                    downloadItems.forEach { item ->
+                        if (item.type.name == "VIDEO") {
+                            vId=item.videoId
+                            vFileName=item.fileName
+                            vFormat= item.format.toString()
+                            vQuality= item.quality.toString()
+                        }
+                        if (item.type.name == "AUDIO") {
+                            aFormat= item.format.toString()
+                            aQuality= item.quality.toString()
+                        }
+                    }
+
+                    DownloadHelper.startDownloadService(
+                        requireContext(),
+                        vId,
+                        vFileName,
+                        vFormat,
+                        vQuality,
+                        aFormat,
+                        aQuality,
+                    )
+
                 }
             }
         }

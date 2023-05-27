@@ -278,8 +278,7 @@
         <item>@string/least_views</item>
         <item>@string/alphabetic</item>
         <item>@string/alphabetic_reversed</item>
-        <item>@string/channel_name_az</item>
-        <item>@string/channel_name_za</item>
+        <item>@string/channel_name</item>
         <item>@string/shuffle</item>
     </string-array>
 

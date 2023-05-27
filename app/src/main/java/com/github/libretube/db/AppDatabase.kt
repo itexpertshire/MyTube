@@ -6,7 +6,6 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.github.libretube.db.dao.*
 import com.github.libretube.db.obj.*
-import com.github.libretube.db.Converters
 
 @Database(
     entities = [

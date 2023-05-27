@@ -6,6 +6,7 @@ import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
+import android.util.Log
 import android.util.SparseBooleanArray
 import androidx.core.app.NotificationCompat
 import androidx.core.app.PendingIntentCompat
@@ -166,7 +167,7 @@ class DownloadService : LifecycleService() {
         val path = item.path
         var totalRead = path.fileSize()
         val url = URL(item.url ?: return)
-
+        Log.d("Amit","url-${url}")
         url.getContentLength().let { size ->
             if (size > 0 && size != item.downloadSize) {
                 item.downloadSize = size
@@ -198,6 +199,7 @@ class DownloadService : LifecycleService() {
 
             // If link is expired try to regenerate using available info.
             if (con.responseCode == 403) {
+                Log.d("Amit","con.responseCode-${con.responseCode}")
                 regenerateLink(item)
                 con.disconnect()
                 downloadFile(item)
@@ -207,6 +209,7 @@ class DownloadService : LifecycleService() {
                 _downloadFlow.emit(item.id to DownloadStatus.Error(message))
                 toastFromMainThread(message)
                 con.disconnect()
+                Log.d("Amit","download failed and paused-con.responseCode-${con.responseCode}")
                 pause(item.id)
                 return
             }
@@ -255,8 +258,10 @@ class DownloadService : LifecycleService() {
                 }
             } catch (_: CancellationException) {
             } catch (e: Exception) {
+                Log.d("Amit","download Exception-${e.message.toString()}")
                 toastFromMainThread("${getString(R.string.download)}: ${e.message}")
                 _downloadFlow.emit(item.id to DownloadStatus.Error(e.message.toString(), e))
+
             }
 
             withContext(Dispatchers.IO) {

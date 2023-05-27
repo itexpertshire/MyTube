@@ -17,8 +17,8 @@ object DownloadHelper {
     const val METADATA_DIR = "metadata"
     const val THUMBNAIL_DIR = "thumbnail"
     const val DOWNLOAD_CHUNK_SIZE = 8L * 1024
-    const val DEFAULT_TIMEOUT = 15 * 1000
-    const val DEFAULT_RETRY = 3
+    const val DEFAULT_TIMEOUT = 60 * 1000
+    const val DEFAULT_RETRY = 5
 
     private fun getOfflineStorageDir(context: Context): Path {
         val file = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
