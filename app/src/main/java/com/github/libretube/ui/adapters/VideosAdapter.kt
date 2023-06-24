@@ -79,6 +79,7 @@ class VideosAdapter(
             viewType == CAUGHT_UP_TYPE -> VideosViewHolder(
                 AllCaughtUpRowBinding.inflate(layoutInflater, parent, false),
             )
+
             forceMode in listOf(
                 ForceMode.TRENDING,
                 ForceMode.RELATED,
@@ -86,13 +87,16 @@ class VideosAdapter(
             ) -> VideosViewHolder(
                 TrendingRowBinding.inflate(layoutInflater, parent, false),
             )
+
             forceMode == ForceMode.CHANNEL -> VideosViewHolder(
                 VideoRowBinding.inflate(layoutInflater, parent, false),
             )
+
             PreferenceHelper.getBoolean(
                 PreferenceKeys.ALTERNATIVE_VIDEOS_LAYOUT,
                 false,
             ) -> VideosViewHolder(VideoRowBinding.inflate(layoutInflater, parent, false))
+
             else -> VideosViewHolder(TrendingRowBinding.inflate(layoutInflater, parent, false))
         }
     }
@@ -120,17 +124,15 @@ class VideosAdapter(
          }
         /*
         videoId?.let {
-            val shouldHide =
-                (holder.trendingRowBinding?.watchProgress ?: holder.videoRowBinding!!.watchProgress)
-                    .setWatchProgressLength(it, video.duration ?: 0L)
-            if (hideWatched ) {
-                hideItemView(holder)
-                return
-            }
-            else
-                return shouldHide
-        }*/
+            (holder.trendingRowBinding?.watchProgress ?: holder.videoRowBinding!!.watchProgress)
+                .setWatchProgressLength(it, video.duration ?: 0L)
+        }
 
+        val context = (holder.videoRowBinding ?: holder.trendingRowBinding
+        ?: holder.allCaughtUpBinding)!!.root.context
+        val uploadDate =
+            video.uploaded?.takeIf { it > 0 }?.let { TextUtils.formatRelativeDate(context, it) }
+*/
         // Trending layout
         holder.trendingRowBinding?.apply {
             // set a fixed width for better visuals

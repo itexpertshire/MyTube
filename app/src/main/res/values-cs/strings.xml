@@ -73,7 +73,7 @@
     <string name="category_sponsor_description">Placená propagace, placená doporučení a přímé reklamy. Nezahrnuje sebepropagaci nebo shout-outy uživatelů/tvůrců/webů/produktů, které se tvůrcovi líbí.</string>
     <string name="category_selfpromo">Neplacená/vlastní propagace</string>
     <string name="category_selfpromo_description">Podobné jako „sponzor“, ale pro neplacenou nebo vlastní propagaci. Zahrnuje sekce o zboží, darech nebo informace o tom, s kým spolupracují.</string>
-    <string name="category_interaction">Připomenutí interakce (like a odběr)</string>
+    <string name="category_interaction">Připomenutí interakce</string>
     <string name="category_interaction_description">Krátká připomínka, abyste dali like, odběr nebo jste sledovali tvůrce uprostřed obsahu. Pokud je segment dlouhý nebo zahrnuje něco specifického, mělo by být místo toho zařazeno do vlastní propagace.</string>
     <string name="category_intro">Přestávka/Intro</string>
     <string name="category_intro_description">Interval bez skutečného obsahu. Může to být pauza, statický obrázek nebo opakující se animace. Nemělo by být použito pro přechody obsahující informace.</string>
@@ -172,7 +172,7 @@
     <string name="general_summary">Jazyk a oblast</string>
     <string name="advanced_summary">Stahování a obnovení</string>
     <string name="restore">Obnovit</string>
-    <string name="torchIcon">Módní svítilna</string>
+    <string name="torchIcon">Módní pochodeň</string>
     <string name="behavior">Chování</string>
     <string name="player_summary">Výchozí hodnoty a chování</string>
     <string name="deleteAccount_summary">Odstranit účet Piped</string>
@@ -438,4 +438,19 @@
     <string name="export_subscriptions_to">Exportovat odběry do</string>
     <string name="import_format_freetube">FreeTube</string>
     <string name="import_format_youtube_csv">YouTube (CSV)</string>
+    <string name="export_playlists_to">Exportovat playlisty do</string>
+    <string name="import_format_piped">Piped / LibreTube</string>
+    <string name="import_playlists_from">Importovat playlisty z</string>
+    <string name="home_tab_content">Obsah domovské stránky</string>
+    <string name="welcome">Vítejte v LibreTube</string>
+    <string name="choose_instance">Nejprve prosím vyberte instanci!</string>
+    <string name="choose_instance_long">Níže si vyberte instanci Piped, kterou chcete použít. Instance Piped bude fungovat jako prostředník mezi vámi a službou YouTube. Tyto instance se nacházejí na různých fyzických místech - jsou označeny vlajkou (vlajkami) své země. Instance, které jsou fyzicky blíže k vám, budou pravděpodobně rychlejší než instance, které jsou dále. Používanou instanci můžete kdykoli změnit v nastavení.</string>
+    <string name="mark_as_unwatched">Označit jako nezhlédnuté</string>
+    <string name="playlist_description">Popis playlistu</string>
+    <string name="emptyPlaylistDescription">Popis playlistu nemůže být prázdný</string>
+    <string name="change_playlist_description">Změnit popis playlistu</string>
+    <string name="show_search_suggestions">Zobrazit návrhy vyhledávání</string>
+    <string name="off">Vypnuto</string>
+    <string name="manual">Ručně</string>
+    <string name="automatic">Automaticky</string>
 </resources>

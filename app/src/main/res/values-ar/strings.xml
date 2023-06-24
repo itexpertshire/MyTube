@@ -87,7 +87,7 @@
     <string name="category_segments">الاجزاء</string>
     <string name="category_selfpromo">الترويج غير المدفوع / الذاتي</string>
     <string name="category_selfpromo_description">على غرار \"الراعي\" باستثناء الترويج غير المدفوع أو الذاتي. يتضمن ذلك أقساما حول البضائع أو التبرعات أو المعلومات حول من تعاونوا معه.</string>
-    <string name="category_interaction">تذكير التفاعل (إعجاب واشتراك)</string>
+    <string name="category_interaction">تذكير التفاعل</string>
     <string name="license">الترخيص</string>
     <string name="color_accent">اللون الثانوي</string>
     <string name="color_red">أحمر</string>
@@ -447,4 +447,19 @@
     <string name="import_format_youtube_csv">يوتيوب (CSV)</string>
     <string name="import_format_newpipe">نيوبايب</string>
     <string name="import_subscriptions_from">استيراد الاشتراكات من</string>
+    <string name="import_format_piped">بايبد / ليبري تيوب</string>
+    <string name="import_playlists_from">استيراد قوائم التشغيل من</string>
+    <string name="export_playlists_to">تصدير قوائم التشغيل إلى</string>
+    <string name="home_tab_content">محتوى تبويب \"الصفحة الرئيسية\"</string>
+    <string name="mark_as_unwatched">وضع علامة على أنه لم تتم مشاهدته</string>
+    <string name="welcome">مرحبا بك في ليبري تيوب</string>
+    <string name="choose_instance">الرجاء اختيار مثيل أولا!</string>
+    <string name="choose_instance_long">الرجاء اختيار مثيل Piped لاستخدامه من أدناه. سيعمل مثيل Piped كوسيط بينك وبين YouTube. توجد هذه الأمثلة في مواقع مادية مختلفة - يشار إليها بعلم (أعلام) الدولة الخاصة بهم. من المحتمل أن تكون المثيلات الأقرب إليك فعليًا أسرع من المثيلات التي ليست كذلك. يمكنك تغيير المثيل الذي تستخدمه في الإعدادات في أي وقت.</string>
+    <string name="emptyPlaylistDescription">لا يمكن أن يكون وصف قائمة التشغيل فارغا</string>
+    <string name="playlist_description">وصف قائمة التشغيل</string>
+    <string name="change_playlist_description">تغيير وصف قائمة التشغيل</string>
+    <string name="show_search_suggestions">عرض اقتراحات البحث</string>
+    <string name="off">ايقاف</string>
+    <string name="manual">يدوي</string>
+    <string name="automatic">تلقائي</string>
 </resources>

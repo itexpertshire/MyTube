@@ -3,7 +3,6 @@ package com.github.libretube.helpers
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
-import com.github.libretube.constants.PIPED_API_URL
 import com.github.libretube.constants.PreferenceKeys
 import java.time.Instant
 
@@ -29,10 +28,6 @@ object PreferenceHelper {
 
         authSettings = getAuthenticationPreferences(context)
         authEditor = authSettings.edit()
-
-        if (getString(PreferenceKeys.FETCH_INSTANCE, "").isBlank()) {
-            putString(PreferenceKeys.FETCH_INSTANCE, PIPED_API_URL)
-        }
     }
 
     fun putString(key: String, value: String) {
@@ -77,6 +72,10 @@ object PreferenceHelper {
         return settings.getFloat(key, defValue)
     }
 
+    fun getStringSet(key: String?, defValue: Set<String>): Set<String> {
+        return settings.getStringSet(key, defValue).orEmpty()
+    }
+
     fun clearPreferences() {
         editor.clear().apply()
     }
@@ -97,7 +96,7 @@ object PreferenceHelper {
         authEditor.putString(PreferenceKeys.USERNAME, newValue).apply()
     }
 
-    fun setLatestVideoId(videoId: String) {
+    fun setLastSeenVideoId(videoId: String) {
         editor.putString(PreferenceKeys.LAST_STREAM_VIDEO_ID, videoId).commit()
     }
 

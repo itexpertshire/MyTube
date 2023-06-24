@@ -38,30 +38,29 @@ class MarkableTimeBar(
     }
 
     private fun drawSegments(canvas: Canvas) {
-        if (player == null) return
-
-        if (!PreferenceHelper.getBoolean(PreferenceKeys.SB_SHOW_MARKERS, true)) return
-
-        val horizontalOffset = (parent as View).marginLeft
+        val markersEnabled = PreferenceHelper.getBoolean(PreferenceKeys.SB_SHOW_MARKERS, true)
+        if (player == null || !markersEnabled) return
 
         canvas.save()
-        length = canvas.width - 2 * horizontalOffset
-
+        val horizontalOffset = (parent as View).marginLeft
+        length = canvas.width - horizontalOffset * 2
         val marginY = canvas.height / 2 - progressBarHeight / 2
+        val themeColor = ThemeHelper.getThemeColor(context, R.attr.colorOnSecondary,)
 
         segments.forEach {
             canvas.drawRect(
                 Rect(
-                    (it.segment.first() + horizontalOffset).toLength(),
+                    it.segment.first().toLength() + horizontalOffset,
                     marginY,
-                    (it.segment.last() + horizontalOffset).toLength(),
+                    it.segment.last().toLength() + horizontalOffset,
                     canvas.height - marginY,
                 ),
                 Paint().apply {
-                    color = ThemeHelper.getThemeColor(
-                        context,
-                        R.attr.colorOnSecondary,
-                    )
+                    color = if (PreferenceHelper.getBoolean("sb_enable_custom_colors", false)) {
+                        PreferenceHelper.getInt(it.category + "_color", themeColor)
+                    } else {
+                        themeColor
+                    }
                 },
             )
         }

@@ -28,7 +28,6 @@ import com.github.libretube.constants.IntentData
 import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.databinding.ActivityMainBinding
 import com.github.libretube.extensions.toID
-import com.github.libretube.helpers.BackgroundHelper
 import com.github.libretube.helpers.NavBarHelper
 import com.github.libretube.helpers.NavigationHelper
 import com.github.libretube.helpers.NetworkHelper
@@ -55,7 +54,12 @@ class MainActivity : BaseActivity() {
     lateinit var navController: NavController
     private var startFragmentId = R.id.homeFragment
 
-    val autoRotationEnabled = PreferenceHelper.getBoolean(PreferenceKeys.AUTO_ROTATION, false)
+    val autoRotationEnabled: Boolean by lazy {
+        PreferenceHelper.getBoolean(
+            PreferenceKeys.AUTO_ROTATION,
+            resources.getBoolean(R.bool.config_default_auto_rotation_pref)
+        )
+    }
 
     lateinit var searchView: SearchView
     private lateinit var searchItem: MenuItem
@@ -88,6 +92,11 @@ class MainActivity : BaseActivity() {
         if (!NetworkHelper.isNetworkAvailable(this)) {
             val noInternetIntent = Intent(this, NoInternetActivity::class.java)
             startActivity(noInternetIntent)
+            finish()
+            return
+        } else if (PreferenceHelper.getString(PreferenceKeys.FETCH_INSTANCE, "").isEmpty()) {
+            val welcomeIntent = Intent(this, WelcomeActivity::class.java)
+            startActivity(welcomeIntent)
             finish()
             return
         }
@@ -196,7 +205,7 @@ class MainActivity : BaseActivity() {
     /**
      * Deselect all bottom bar items
      */
-    fun deselectBottomBarItems() {
+    private fun deselectBottomBarItems() {
         binding.bottomNav.menu.setGroupCheckable(0, true, false)
         for (child in binding.bottomNav.menu.children) {
             child.isChecked = false
@@ -284,12 +293,6 @@ class MainActivity : BaseActivity() {
         searchView.isIconified = true
         searchItem.collapseActionView()
         searchView.onActionViewCollapsed()
-    }
-
-    override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
-        menu?.findItem(R.id.action_audio)?.isVisible =
-            BackgroundHelper.isBackgroundServiceRunning(this)
-        return super.onPrepareOptionsMenu(menu)
     }
 
     private fun isSearchInProgress(): Boolean {
@@ -409,10 +412,6 @@ class MainActivity : BaseActivity() {
                 startActivity(helpIntent)
                 true
             }
-            R.id.action_audio -> {
-                NavigationHelper.startAudioPlayer(this)
-                true
-            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -433,26 +432,26 @@ class MainActivity : BaseActivity() {
         intent?.getStringExtra(IntentData.channelId)?.let {
             navController.navigate(
                 R.id.channelFragment,
-                bundleOf(IntentData.channelId to it),
+                bundleOf(IntentData.channelId to it)
             )
         }
         intent?.getStringExtra(IntentData.channelName)?.let {
             navController.navigate(
                 R.id.channelFragment,
-                bundleOf(IntentData.channelName to it),
+                bundleOf(IntentData.channelName to it)
             )
         }
         intent?.getStringExtra(IntentData.playlistId)?.let {
             navController.navigate(
                 R.id.playlistFragment,
-                bundleOf(IntentData.playlistId to it),
+                bundleOf(IntentData.playlistId to it)
             )
         }
         intent?.getStringExtra(IntentData.videoId)?.let {
             NavigationHelper.navigateVideo(
                 context = this,
                 videoId = it,
-                timeStamp = intent?.getLongExtra(IntentData.timeStamp, 0L),
+                timestamp = intent.getLongExtra(IntentData.timeStamp, 0L)
             )
         }
 
@@ -483,17 +482,15 @@ class MainActivity : BaseActivity() {
             (fragment as? PlayerFragment)?.binding?.apply {
                 mainContainer.isClickable = false
                 linLayout.visibility = View.VISIBLE
+                playerMotionLayout.setTransitionDuration(250)
+                playerMotionLayout.transitionToEnd()
+                playerMotionLayout.getConstraintSet(R.id.start).constrainHeight(R.id.player, 0)
+                playerMotionLayout.enableTransition(R.id.yt_transition, true)
             }
-        }
-        supportFragmentManager.fragments.forEach { fragment ->
-            (fragment as? PlayerFragment)?.binding?.playerMotionLayout?.apply {
-                // set the animation duration
-                setTransitionDuration(250)
-                transitionToEnd()
-                getConstraintSet(R.id.start).constrainHeight(R.id.player, 0)
-                enableTransition(R.id.yt_transition, true)
+            (fragment as? AudioPlayerFragment)?.binding?.apply {
+                audioPlayerContainer.isClickable = false
+                playerMotionLayout.transitionToEnd()
             }
-            (fragment as? AudioPlayerFragment)?.binding?.playerMotionLayout?.transitionToEnd()
         }
 
         val playerViewModel = ViewModelProvider(this)[PlayerViewModel::class.java]

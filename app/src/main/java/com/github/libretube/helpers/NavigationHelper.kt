@@ -2,7 +2,6 @@ package com.github.libretube.helpers
 
 import android.app.NotificationManager
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
@@ -17,7 +16,7 @@ import com.github.libretube.constants.IntentData
 import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.enums.PlaylistType
 import com.github.libretube.extensions.toID
-import com.github.libretube.ui.activities.MainActivity
+import com.github.libretube.parcelable.PlayerData
 import com.github.libretube.ui.fragments.AudioPlayerFragment
 import com.github.libretube.ui.fragments.PlayerFragment
 import com.github.libretube.ui.views.SingleViewTouchableMotionLayout
@@ -31,7 +30,7 @@ object NavigationHelper {
     ) {
         if (channelId == null) return
 
-        val activity = unwrapActivity(context)
+        val activity = ContextHelper.unwrapActivity(context)
         val bundle = bundleOf(IntentData.channelId to channelId)
         activity.navController.navigate(R.id.channelFragment, bundle)
         try {
@@ -45,14 +44,6 @@ object NavigationHelper {
         }
     }
 
-    private fun unwrapActivity(context: Context): MainActivity {
-        var correctContext: Context? = context
-        while (correctContext !is MainActivity && correctContext is ContextWrapper) {
-            correctContext = correctContext.baseContext
-        }
-        return correctContext as MainActivity
-    }
-
     /**
      * Navigate to the given video using the other provided parameters as well
      * If the audio only mode is enabled, play it in the background, else as a normal video
@@ -63,17 +54,17 @@ object NavigationHelper {
         playlistId: String? = null,
         channelId: String? = null,
         keepQueue: Boolean = false,
-        timeStamp: Long? = null,
+        timestamp: Long = 0,
         forceVideo: Boolean = false,
     ) {
         if (videoId == null) return
+        BackgroundHelper.stopBackgroundPlay(context)
 
         if (PreferenceHelper.getBoolean(PreferenceKeys.AUDIO_ONLY_MODE, false) && !forceVideo) {
-            BackgroundHelper.stopBackgroundPlay(context)
             BackgroundHelper.playOnBackground(
                 context,
                 videoId.toID(),
-                timeStamp,
+                timestamp,
                 playlistId,
                 channelId,
                 keepQueue,
@@ -84,15 +75,10 @@ object NavigationHelper {
             return
         }
 
-        val bundle = bundleOf(
-            IntentData.videoId to videoId.toID(),
-            IntentData.playlistId to playlistId,
-            IntentData.channelId to channelId,
-            IntentData.keepQueue to keepQueue,
-            IntentData.timeStamp to timeStamp,
-        )
+        val playerData = PlayerData(videoId.toID(), playlistId, channelId, keepQueue, timestamp)
+        val bundle = bundleOf(IntentData.playerData to playerData)
 
-        val activity = unwrapActivity(context)
+        val activity = ContextHelper.unwrapActivity(context)
         activity.supportFragmentManager.commitNow {
             replace<PlayerFragment>(R.id.container, args = bundle)
         }
@@ -105,7 +91,7 @@ object NavigationHelper {
     ) {
         if (playlistId == null) return
 
-        val activity = unwrapActivity(context)
+        val activity = ContextHelper.unwrapActivity(context)
         val bundle = bundleOf(
             IntentData.playlistId to playlistId,
             IntentData.playlistType to playlistType,
@@ -116,10 +102,13 @@ object NavigationHelper {
     /**
      * Start the audio player fragment
      */
-    fun startAudioPlayer(context: Context) {
-        val activity = unwrapActivity(context)
+    fun startAudioPlayer(context: Context, minimizeByDefault: Boolean = false) {
+        val activity = ContextHelper.unwrapActivity(context)
         activity.supportFragmentManager.commitNow {
-            replace<AudioPlayerFragment>(R.id.container)
+            val audioPlayerFragment = AudioPlayerFragment().apply {
+                arguments = bundleOf(IntentData.minimizeByDefault to minimizeByDefault)
+            }
+            replace(R.id.container, audioPlayerFragment)
         }
     }
 

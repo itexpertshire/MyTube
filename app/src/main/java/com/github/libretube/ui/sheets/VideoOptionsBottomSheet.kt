@@ -1,6 +1,8 @@
 package com.github.libretube.ui.sheets
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.navigation.fragment.NavHostFragment
 import com.github.libretube.R
@@ -12,6 +14,7 @@ import com.github.libretube.db.DatabaseHolder
 import com.github.libretube.db.obj.WatchPosition
 import com.github.libretube.enums.ShareObjectType
 import com.github.libretube.helpers.BackgroundHelper
+import com.github.libretube.helpers.NavigationHelper
 import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.obj.ShareData
@@ -25,6 +28,7 @@ import com.github.libretube.util.PlayingQueue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 /**
@@ -54,17 +58,25 @@ class VideoOptionsBottomSheet(
             optionsList += getString(R.string.add_to_queue)
         }
 
-        // show the mark as watched option if watch positions are enabled
-        if (PlayerHelper.watchPositionsVideo) {
-            optionsList += getString(R.string.mark_as_watched)
-            optionsList += getString(R.string.not_interested)
-        }
+        // show the mark as watched or unwatched option if watch positions are enabled
+        if (PlayerHelper.watchPositionsVideo || PlayerHelper.watchHistoryEnabled) {
+            val watchPositionEntry = runBlocking(Dispatchers.IO) {
+                DatabaseHolder.Database.watchPositionDao().findById(videoId)
+            }
+            val watchHistoryEntry = runBlocking(Dispatchers.IO) {
+                DatabaseHolder.Database.watchHistoryDao().findById(videoId)
+            }
+            optionsList += if (watchHistoryEntry != null || watchPositionEntry != null) {
+                getString(R.string.mark_as_unwatched)
+            } else getString(R.string.mark_as_watched)
+
 
         setSimpleItems(optionsList) { which ->
             when (optionsList[which]) {
                 // Start the background mode
                 getString(R.string.playOnBackground) -> {
                     BackgroundHelper.playOnBackground(requireContext(), videoId)
+                    NavigationHelper.startAudioPlayer(requireContext(), true)
                 }
                 // Add Video to Playlist Dialog
                 getString(R.string.addToPlaylist) -> {
@@ -83,48 +95,42 @@ class VideoOptionsBottomSheet(
                     shareDialog.show(parentFragmentManager, ShareDialog::class.java.name)
                 }
                 getString(R.string.play_next) -> {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            PlayingQueue.addAsNext(
-                                RetrofitInstance.api.getStreams(videoId)
-                                    .toStreamItem(videoId)
-                            )
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+                    try {
+                        val streamItem = withContext(Dispatchers.IO) {
+                            RetrofitInstance.api.getStreams(videoId).toStreamItem(videoId)
                         }
+                        PlayingQueue.addAsNext(streamItem)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
                 getString(R.string.add_to_queue) -> {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            PlayingQueue.add(
-                                RetrofitInstance.api.getStreams(videoId)
-                                    .toStreamItem(videoId)
-                            )
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+                    try {
+                        val streamItem = withContext(Dispatchers.IO) {
+                            RetrofitInstance.api.getStreams(videoId).toStreamItem(videoId)
                         }
+                        PlayingQueue.add(streamItem)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
                 getString(R.string.mark_as_watched) -> {
                     val watchPosition = WatchPosition(videoId, Long.MAX_VALUE)
-                    CoroutineScope(Dispatchers.IO).launch {
-                        DatabaseHolder.Database.watchPositionDao().insertAll(listOf( watchPosition))
+                    withContext(Dispatchers.IO) {
+                        DatabaseHolder.Database.watchPositionDao().insert(watchPosition)
+                        if (!PlayerHelper.watchHistoryEnabled) return@withContext
+                        // add video to watch history
+                        runCatching {
+                            RetrofitInstance.api.getStreams(videoId)
+                        }.getOrNull()?.let { DatabaseHelper.addToWatchHistory(videoId, it) }
                     }
                     if (PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false)) {
                         // get the host fragment containing the current fragment
                         val navHostFragment =
-                            (context as MainActivity).supportFragmentManager.findFragmentById(
-                                R.id.fragment
-                            ) as NavHostFragment?
+                            (context as MainActivity).supportFragmentManager
+                                .findFragmentById(R.id.fragment) as NavHostFragment?
                         // get the current fragment
                         val fragment = navHostFragment?.childFragmentManager?.fragments?.firstOrNull()
-
-                        Log.e(
-                            "fragments",
-                            navHostFragment?.childFragmentManager?.fragments.orEmpty()
-                                .joinToString(", ") { it::class.java.name.toString() }
-                        )
                         (fragment as? SubscriptionsFragment)?.subscriptionsAdapter?.removeItemById(
                             videoId,
                         )
@@ -162,6 +168,12 @@ class VideoOptionsBottomSheet(
                             (fragment as? SubscriptionsFragment)?.subscriptionsAdapter?.removeItemById(videoId)
                             adpt.removeItemById(videoId)
                         }
+                }
+                getString(R.string.mark_as_unwatched) -> {
+                    withContext(Dispatchers.IO) {
+                        DatabaseHolder.Database.watchPositionDao().deleteByVideoId(videoId)
+                        DatabaseHolder.Database.watchHistoryDao().deleteByVideoId(videoId)
+                    }
                 }
             }
         }

@@ -429,8 +429,6 @@
     <string name="show_stream_thumbnails_summary">Паказаць мініяцюры новых відэа. Уключэнне гэтага прывядзе да спажывання дадатковых даных.</string>
     <string name="show_stream_thumbnails">Паказваць мініяцюры відэа</string>
     <string name="unlimited_search_history">Неабмежаваная гісторыя пошуку</string>
-    <string name="playlist_name_az">Назва плэйліста (А-Я)</string>
-    <string name="playlist_name_za">Назва плэйліста (Я-А)</string>
     <string name="duration">Працягласць</string>
     <string name="duration_reversed">Працягласць (перавернута)</string>
     <string name="shorts_notifications">Апавяшчэнні для shorts</string>
@@ -443,4 +441,16 @@
     <string name="import_format_newpipe">NewPipe</string>
     <string name="import_format_freetube">FreeTube</string>
     <string name="import_format_youtube_csv">YouTube (CSV)</string>
+    <string name="import_playlists_from">Імпартаваць плэйлісты з</string>
+    <string name="export_playlists_to">Экспартаваць плэйлісты ў</string>
+    <string name="import_format_piped">Piped / LibreTube</string>
+    <string name="home_tab_content">Змесціва ўкладкі \"Галоўная старонка\"</string>
+    <string name="mark_as_unwatched">Пазначыць як непрагледжанае</string>
+    <string name="welcome">Сардэчна запрашаем на LibreTube</string>
+    <string name="choose_instance">Калі ласка, спачатку абярыце асобнік!</string>
+    <string name="choose_instance_long">Калі ласка, абярыце асобнік Piped для выкарыстання знізу. Экземпляр Piped будзе дзейнічаць як пасярэднік паміж вамі і YouTube. Гэтыя экзэмпляры размешчаны ў розных фізічных месцах - пазначана сцягам(-амі) іх краіны. Экземпляры, якія фізічна бліжэй да вас, хутчэй за ўсё, хутчэй, чым асобнікі, якія не. Вы можаце змяніць асобнік, які вы выкарыстоўваеце, у наладах у любы час.</string>
+    <string name="change_playlist_description">Змяніць апісанне плэйліста</string>
+    <string name="playlist_description">Апісанне плэйліста</string>
+    <string name="emptyPlaylistDescription">Апісанне плэйліста не можа быць пустым</string>
+    <string name="show_search_suggestions">Паказаць прапановы пошуку</string>
 </resources>

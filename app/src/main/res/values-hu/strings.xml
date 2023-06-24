@@ -435,4 +435,11 @@
     <string name="import_format_newpipe">NewPipe</string>
     <string name="import_format_freetube">FreeTube</string>
     <string name="import_format_youtube_csv">YouTube (CSV)</string>
+    <string name="import_playlists_from">Lejátszási listák importálása innen</string>
+    <string name="export_playlists_to">Lejátszási listák exportálása ide</string>
+    <string name="import_format_piped">Piped / LibreTube</string>
+    <string name="mark_as_unwatched">Meg nem nézettként jelölés</string>
+    <string name="home_tab_content">Kezdőlap tartalma</string>
+    <string name="choose_instance">Először</string>
+    <string name="welcome">Üdvözli a LibreTube</string>
 </resources>

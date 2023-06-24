@@ -89,7 +89,7 @@
     <string name="sponsorblock">SponsorBlock</string>
     <string name="sponsorblock_summary">使用 https://sponsor.ajay.app 的 API</string>
     <string name="category_sponsor">赞助商</string>
-    <string name="category_interaction">交互提醒（点赞和订阅）</string>
+    <string name="category_interaction">交互提醒</string>
     <string name="category_interaction_description">内容中求点赞、订阅或关注的简短提示算作交互。如果是长篇大论或关于某些特定的内容，则应属于自我推广。</string>
     <string name="color_accent">强调色</string>
     <string name="color_purple">紫</string>
@@ -152,7 +152,7 @@
     <string name="player_autoplay">自动播放</string>
     <string name="instance_frontend_url">实例前端的URL</string>
     <string name="quality">清晰度</string>
-    <string name="behavior">布局</string>
+    <string name="behavior">行为</string>
     <string name="player_summary">默认和行为</string>
     <string name="seek_increment">跳转时长</string>
     <string name="pauseOnScreenOff">自动暂停</string>
@@ -432,4 +432,19 @@
     <string name="import_format_freetube">FreeTube</string>
     <string name="export_subscriptions_to">将订阅导出到</string>
     <string name="import_format_youtube_csv">YouTube (CSV)</string>
+    <string name="import_format_piped">Piped / LibreTube</string>
+    <string name="import_playlists_from">自以下位置导入播放列表</string>
+    <string name="export_playlists_to">将播放列表导出到</string>
+    <string name="choose_instance">请先选择一个实例！</string>
+    <string name="home_tab_content">首页内容</string>
+    <string name="welcome">欢迎使用 LibreTube</string>
+    <string name="choose_instance_long">请在下方选择一个 Piped 实例来使用。Piped 实例将充当您与 YouTube 之间的中间人。这些实例位于不同的物理位置——由相应的国旗表示。离您的地理位置较近的实例相对其他实例可能更快。您可以在设置中随时修改使用的实例。</string>
+    <string name="mark_as_unwatched">标记为尚未观看</string>
+    <string name="change_playlist_description">更改播放列表描述</string>
+    <string name="playlist_description">播放列表描述</string>
+    <string name="emptyPlaylistDescription">播放列表描述不能为空</string>
+    <string name="show_search_suggestions">显示搜索建议</string>
+    <string name="off">关</string>
+    <string name="manual">手动</string>
+    <string name="automatic">自动</string>
 </resources>

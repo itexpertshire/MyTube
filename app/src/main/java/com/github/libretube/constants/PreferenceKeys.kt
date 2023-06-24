@@ -39,6 +39,8 @@ object PreferenceKeys {
     const val NEW_VIDEOS_BADGE = "new_videos_badge"
     const val PLAYLISTS_ORDER = "playlists_order"
     const val PLAYLIST_SORT_ORDER = "playlist_sort_order"
+    const val HOME_TAB_CONTENT = "home_tab_content"
+    const val SEARCH_SUGGESTIONS = "search_suggestions"
 
     /**
      * Instance
@@ -79,7 +81,6 @@ object PreferenceKeys {
     const val SKIP_BUTTONS = "skip_buttons"
     const val PICTURE_IN_PICTURE = "picture_in_picture"
     const val PLAYER_RESIZE_MODE = "player_resize_mode"
-    const val SB_SKIP_MANUALLY = "sb_skip_manually_key"
     const val SB_SHOW_MARKERS = "sb_show_markers"
     const val ALTERNATIVE_PLAYER_LAYOUT = "alternative_player_layout"
     const val USE_HLS_OVER_DASH = "use_hls"

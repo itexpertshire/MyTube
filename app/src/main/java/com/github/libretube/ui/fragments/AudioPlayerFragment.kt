@@ -13,6 +13,7 @@ import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.constraintlayout.motion.widget.TransitionAdapter
 import androidx.fragment.app.Fragment
@@ -20,6 +21,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.commit
 import com.github.libretube.R
 import com.github.libretube.api.obj.StreamItem
+import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.FragmentAudioPlayerBinding
 import com.github.libretube.enums.ShareObjectType
 import com.github.libretube.extensions.normalize
@@ -28,6 +30,7 @@ import com.github.libretube.helpers.AudioHelper
 import com.github.libretube.helpers.BackgroundHelper
 import com.github.libretube.helpers.ImageHelper
 import com.github.libretube.helpers.NavigationHelper
+import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.obj.ShareData
 import com.github.libretube.services.OnlinePlayerService
 import com.github.libretube.ui.activities.MainActivity
@@ -53,9 +56,6 @@ class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
     private var sId: Int = 0
     private var eId: Int = 0
 
-    private val onTrackChangeListener: (StreamItem) -> Unit = {
-        updateStreamInfo()
-    }
     private var handler = Handler(Looper.getMainLooper())
     private var isPaused: Boolean = false
 
@@ -140,7 +140,7 @@ class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
             NavigationHelper.navigateVideo(
                 context = requireContext(),
                 videoId = PlayingQueue.getCurrent()?.url?.toID(),
-                timeStamp = playerService?.player?.currentPosition?.div(1000),
+                timestamp = playerService?.player?.currentPosition?.div(1000) ?: 0,
                 keepQueue = true,
                 forceVideo = true,
             )
@@ -155,10 +155,20 @@ class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
             ).show(childFragmentManager, null)
         }
 
-        binding.close.setOnClickListener {
-            activity?.unbindService(connection)
-            BackgroundHelper.stopBackgroundPlay(requireContext())
-            killFragment()
+        binding.chapters.setOnClickListener {
+            val playerService = playerService ?: return@setOnClickListener
+            if (playerService.streams == null || playerService.player == null) return@setOnClickListener
+
+            if (playerService.streams!!.chapters.isEmpty()) {
+                Toast.makeText(context, R.string.emptyList, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            PlayerHelper.showChaptersDialog(
+                requireContext(),
+                playerService.streams!!.chapters,
+                playerService.player!!
+            )
         }
 
         binding.miniPlayerClose.setOnClickListener {
@@ -169,9 +179,6 @@ class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
 
         val listener = AudioPlayerThumbnailListener(requireContext(), this)
         binding.thumbnail.setOnTouchListener(listener)
-
-        // Listen for track changes due to autoplay or the notification
-        PlayingQueue.addOnTrackChangedListener(onTrackChangeListener)
 
         binding.playPause.setOnClickListener {
             if (isPaused) playerService?.play() else playerService?.pause()
@@ -226,16 +233,20 @@ class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
             }
         })
 
-        binding.playerMotionLayout.progress = 1.toFloat()
-        binding.playerMotionLayout.transitionToStart()
+        if (arguments?.getBoolean(IntentData.minimizeByDefault, false) != true) {
+            binding.playerMotionLayout.progress = 1f
+            binding.playerMotionLayout.transitionToStart()
+        } else {
+            binding.playerMotionLayout.progress = 0f
+            binding.playerMotionLayout.transitionToEnd()
+        }
     }
 
     /**
      * Load the information from a new stream into the UI
      */
-    private fun updateStreamInfo() {
-        val current = PlayingQueue.getCurrent()
-        current ?: return
+    private fun updateStreamInfo(stream: StreamItem? = null) {
+        val current = stream ?: PlayingQueue.getCurrent() ?: return
 
         binding.title.text = current.title
         binding.miniPlayerTitle.text = current.title
@@ -307,6 +318,9 @@ class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
             binding.miniPlayerPause.setImageResource(iconResource)
             isPaused = !isPlaying
         }
+        playerService?.onNewVideo = { streams, videoId ->
+            updateStreamInfo(streams.toStreamItem(videoId))
+        }
         initializeSeekBar()
     }
 
@@ -321,7 +335,6 @@ class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
         runCatching {
             activity?.unbindService(connection)
         }
-        PlayingQueue.removeOnTrackChangedListener(onTrackChangeListener)
 
         super.onDestroy()
     }

@@ -67,6 +67,7 @@ class PlaylistFragment : Fragment() {
             PreferenceHelper.putInt(PreferenceKeys.PLAYLIST_SORT_ORDER, value)
             field = value
         }
+    private val sortOptions by lazy { resources.getStringArray(R.array.playlistSortOptions) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -148,6 +149,8 @@ class PlaylistFragment : Fragment() {
 
                 binding.playlistInfo.text = getChannelAndVideoString(response, response.videos)
                 binding.playlistDescription.text = response.description
+                // hide playlist description text view if not provided
+                binding.playlistDescription.isGone = response.description.orEmpty().isBlank()
 
                 binding.playlistDescription.let { textView ->
                     textView.setOnClickListener {
@@ -170,6 +173,9 @@ class PlaylistFragment : Fragment() {
                             binding.playlistName.text = it
                             playlistName = it
                         },
+                        onChangeDescription = {
+                            binding.playlistDescription.text = it
+                        }
                     ).show(
                         childFragmentManager,
                         PlaylistOptionsBottomSheet::class.java.name,
@@ -215,13 +221,13 @@ class PlaylistFragment : Fragment() {
                             keepQueue = true,
                         )
                     }
-                    binding.sortMenu.isGone = false
-                    binding.sortMenu.setOnClickListener {
-                        val sortOptions = resources.getStringArray(R.array.playlistSortOptions)
-
+                    binding.sortContainer.isGone = false
+                    binding.sortTV.text = sortOptions[selectedSortOrder]
+                    binding.sortContainer.setOnClickListener {
                         BaseBottomSheet().apply {
                             setSimpleItems(sortOptions.toList()) { index ->
                                 selectedSortOrder = index
+                                binding.sortTV.text = sortOptions[index]
                                 showPlaylistVideos(response)
                             }
                         }.show(childFragmentManager)

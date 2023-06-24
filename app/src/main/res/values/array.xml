@@ -286,6 +286,7 @@
         <item>@string/all</item>
         <item>@string/videos</item>
         <item>@string/yt_shorts</item>
+        <item>@string/livestreams</item>
     </string-array>
 
     <string-array name="playlistSortOptions">
@@ -407,6 +408,34 @@
         <item>always</item>
         <item>videos</item>
         <item>never</item>
+    </string-array>
+
+    <string-array name="homeTabItems">
+        <item>@string/featured</item>
+        <item>@string/trending</item>
+        <item>@string/bookmarks</item>
+        <item>@string/playlists</item>
+    </string-array>
+
+    <string-array name="homeTabItemsValues">
+        <item>featured</item>
+        <item>trending</item>
+        <item>bookmarks</item>
+        <item>playlists</item>
+    </string-array>
+
+    <string-array name="sb_skip_options">
+        <item>@string/off</item>
+        <item>@string/visible</item>
+        <item>@string/manual</item>
+        <item>@string/automatic</item>
+    </string-array>
+
+    <string-array name="sb_skip_options_values">
+        <item>off</item>
+        <item>visible</item>
+        <item>manual</item>
+        <item>automatic</item>
     </string-array>
 
 </resources>

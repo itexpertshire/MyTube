@@ -42,7 +42,7 @@
     <string name="music_albums">אלבומים מ־YT Music</string>
     <string name="music_playlists">רשימות נגינה מ־YT Music</string>
     <string name="category_sponsor_description">קידום ממומן, הפניות בתשלום ופרסום ישיר. לא למטרות קידום עצמי או הוקרה כנה של מטרות/יוצרים/אתרים/מוצרים.</string>
-    <string name="category_interaction">תזכורת אינטראקציה (לייק ומינוי)</string>
+    <string name="category_interaction">תזכורת אינטראקציה</string>
     <string name="category_outro">כרטיסי סיום וקרדיטים</string>
     <string name="category_outro_description">מידע לאחר הסיום. לא למסקנות עם מידע.</string>
     <string name="license">רישיון</string>
@@ -441,4 +441,19 @@
     <string name="import_format_newpipe">NewPipe‎</string>
     <string name="import_format_freetube">FreeTube‎</string>
     <string name="import_format_youtube_csv">YouTube (CSV)‎</string>
+    <string name="import_playlists_from">ייבוא רשימות נגינה מתוך</string>
+    <string name="export_playlists_to">ייצוא רשימות נגינה אל</string>
+    <string name="import_format_piped">Piped / LibreTube‎</string>
+    <string name="home_tab_content">תוכן לשונית בית</string>
+    <string name="mark_as_unwatched">סימון כלא נצפה</string>
+    <string name="welcome">ברוך בואך ל־LibreTube</string>
+    <string name="choose_instance">נא לבחור עותק תחילה!</string>
+    <string name="choose_instance_long">נא לבחור עותק של Piped לשימוש מאלו שלהלן. עותק ה־Piped יכהן כתווך בינך לבין YouTube. העותקים האלו ממוקמים במקומות פיזיים שונים - בציון דגל המדינה/ות. עותקים שנמצאים קרוב אליך פיזית יהיו כנראה מהירים יותר מעותקים שאינם. אפשר לשנות את העותק הפעיל בהגדרות בכל עת.</string>
+    <string name="change_playlist_description">עריכת תיאור רשימת נגינה</string>
+    <string name="playlist_description">תיאור רשימת נגינה</string>
+    <string name="emptyPlaylistDescription">תיאור רשימת הנגינה לא יכול להיות ריק</string>
+    <string name="show_search_suggestions">הצגת הצעות חיפוש</string>
+    <string name="automatic">אוטומטי</string>
+    <string name="off">כבוי</string>
+    <string name="manual">ידני</string>
 </resources>

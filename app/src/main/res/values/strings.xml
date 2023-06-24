@@ -88,7 +88,7 @@
     <string name="category_sponsor_description">Paid promotion, paid referrals and direct advertisements. Not for self-promotion or free genuine shoutouts to causes, creators, websites, and products.</string>
     <string name="category_selfpromo">Unpaid/Self Promotion</string>
     <string name="category_selfpromo_description">Similar to \"sponsor\" except for unpaid or self promotion. This includes sections about merchandise, donations, or info about who they collaborated with.</string>
-    <string name="category_interaction">Interaction reminder (like and subscribe)</string>
+    <string name="category_interaction">Interaction reminder</string>
     <string name="category_interaction_description">When there is a short reminder to like, subscribe or follow in the middle of content. If long or about something specific, it should instead be self promotion.</string>
     <string name="category_intro">Intermission/Intro Animation</string>
     <string name="category_intro_description">An interval without actual content. Could be a pause, static frame, repeating animation. Should not be used for transitions containing info.</string>
@@ -303,6 +303,11 @@
     <string name="queue">Queue</string>
     <string name="sb_markers">Markers</string>
     <string name="sb_markers_summary">Mark the segments on the time bar.</string>
+    <string name="sb_color_enable">Toggles custom color segments for sponsor block segments</string>
+    <string name="sb_custom_colors">Custom segment colors</string>
+    <string name="color">Color</string>
+    <string name="invalid_color">Invalid color value entered!</string>
+    <string name="enter_hex_value">Enter Color Hex Value</string>
     <string name="livestreams">Livestreams</string>
     <string name="alternative_videos_layout">Alternative videos layout</string>
     <string name="defaultIconLight">Default light</string>
@@ -413,6 +418,17 @@
     <string name="creation_date_reversed">Creation date (reversed)</string>
     <string name="alphabetic">Alphabetic</string>
     <string name="alphabetic_reversed">Alphabetic (reversed)</string>
+    <string name="welcome">Welcome to LibreTube</string>
+    <string name="choose_instance">Please choose an instance first!</string>
+    <string name="choose_instance_long">Please choose a Piped instance to use from below. The Piped instance will act as the middleman between you and YouTube. These instances are located at different physical locations - indicated by their country flag(s). Instances physically closer to you are likely faster than instances that are not. You can change the instance you use in the settings at any time.</string>
+    <string name="mark_as_unwatched">Mark as unwatched</string>
+    <string name="change_playlist_description">Change playlist description</string>
+    <string name="playlist_description">Playlist description</string>
+    <string name="emptyPlaylistDescription">The playlist description can\'t be empty</string>
+    <string name="off">Disable</string>
+    <string name="visible">Show in seek bar</string>
+    <string name="manual">Manual skip</string>
+    <string name="automatic">Auto skip</string>
     <string name="playlist_name">playlist</string>
     <string name="channel_name">channel</string>
 
@@ -425,6 +441,8 @@
     <string name="import_format_newpipe">NewPipe</string>
     <string name="import_format_freetube">FreeTube</string>
     <string name="import_format_youtube_csv">YouTube (CSV)</string>
+    <string name="home_tab_content">Home tab content</string>
+    <string name="show_search_suggestions">Show search suggestions</string>
 
     <!-- Notification channel strings -->
     <string name="download_channel_name">Download Service</string>

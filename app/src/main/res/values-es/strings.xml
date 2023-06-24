@@ -136,7 +136,7 @@
     <string name="player">Reproductor</string>
     <string name="appearance_summary">Ajusta la aplicación a tu gusto.</string>
     <string name="playback_speed">Velocidad de reproducción</string>
-    <string name="live">En vivo</string>
+    <string name="live">En directo</string>
     <string name="buffering_goal">Precarga</string>
     <string name="buffering_goal_summary">Cantidad máxima de segundos de vídeo a almacenar en búfer.</string>
     <string name="category_filler">Clips de relleno</string>
@@ -438,4 +438,25 @@
     <string name="export_subscriptions_to">Exportar suscripciones hacia</string>
     <string name="import_format_freetube">FreeTube</string>
     <string name="import_format_youtube_csv">YouTube (CSV)</string>
+    <string name="export_playlists_to">Exportar listas hacia</string>
+    <string name="import_format_piped">Piped / LibreTube</string>
+    <string name="import_playlists_from">Importar listas desde</string>
+    <string name="home_tab_content">Contenido de pestaña \"Inicio\"</string>
+    <string name="mark_as_unwatched">Marcar como no visto</string>
+    <string name="welcome">Bienvenido a LibreTube</string>
+    <string name="choose_instance">Por favor, primero elige una instancia!</string>
+    <string name="choose_instance_long">Por favor elige una instancia de Piped que usar. La instancia de Piped actuará como intermediario entre tú y YouTube . Estas instancias se encuentran en diferentes ubicaciones físicas -indicadas con las banderas de su/s país/es-. Instancias más cercanas a ti físicamente serán probablemente más rápidas que las más lejanas. Puedes cambiar la instancia a usar en los ajustes en cualquier momento.</string>
+    <string name="playlist_description">Descripción de lista de reproducción</string>
+    <string name="change_playlist_description">Cambiar descripción de lista de reproducción</string>
+    <string name="emptyPlaylistDescription">La descripción no puede estar vacía</string>
+    <string name="show_search_suggestions">Mostrar sugerencias al buscar</string>
+    <string name="manual">Omitir manualmente</string>
+    <string name="off">Deshabilitar</string>
+    <string name="automatic">Omitir automáticamente</string>
+    <string name="invalid_color">¡Se ha introducido un código de color inválido!</string>
+    <string name="visible">Mostrar en la barra de tiempo</string>
+    <string name="sb_color_enable">Establece colores personalizados para los segmentos de SponsorBlock</string>
+    <string name="sb_custom_colors">Colores de segmentos personalizados</string>
+    <string name="color">Color</string>
+    <string name="enter_hex_value">Introduce un valor Color Hex</string>
 </resources>

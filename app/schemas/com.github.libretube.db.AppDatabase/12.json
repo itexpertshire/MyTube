@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 12,
-    "identityHash": "8827627b003a34ea58e9c461689898c5",
+    "identityHash": "90ff930e610982a362f9ef8bacae51f9",
     "entities": [
       {
         "tableName": "watchHistoryItem",
@@ -216,7 +216,7 @@
       },
       {
         "tableName": "LocalPlaylist",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `thumbnailUrl` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `thumbnailUrl` TEXT NOT NULL, `description` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -235,6 +235,12 @@
             "columnName": "thumbnailUrl",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": false
           }
         ],
         "primaryKey": {
@@ -461,280 +467,6 @@
         ]
       },
       {
-        "tableName": "keywordHistoryItem",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`keyword` TEXT NOT NULL, `recommendSize` TEXT, `touchCnt` INTEGER, `fetchLastTime` INTEGER NOT NULL, PRIMARY KEY(`keyword`))",
-        "fields": [
-          {
-            "fieldPath": "keyword",
-            "columnName": "keyword",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "recommendSize",
-            "columnName": "recommendSize",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "touchCnt",
-            "columnName": "touchCnt",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "fetchLastTime",
-            "columnName": "fetchLastTime",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "keyword"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
-        "tableName": "recommendStreamItem",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`url` TEXT NOT NULL, `type` TEXT, `title` TEXT, `thumbnail` TEXT, `uploaderName` TEXT, `uploaderUrl` TEXT, `uploaderAvatar` TEXT, `uploadedDate` TEXT, `duration` INTEGER, `views` INTEGER, `uploaderVerified` INTEGER, `uploaded` INTEGER, `shortDescription` TEXT, `isShort` INTEGER NOT NULL, PRIMARY KEY(`url`))",
-        "fields": [
-          {
-            "fieldPath": "url",
-            "columnName": "url",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "type",
-            "columnName": "type",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "title",
-            "columnName": "title",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "thumbnail",
-            "columnName": "thumbnail",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "uploaderName",
-            "columnName": "uploaderName",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "uploaderUrl",
-            "columnName": "uploaderUrl",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "uploaderAvatar",
-            "columnName": "uploaderAvatar",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "uploadedDate",
-            "columnName": "uploadedDate",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "duration",
-            "columnName": "duration",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "views",
-            "columnName": "views",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "uploaderVerified",
-            "columnName": "uploaderVerified",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "uploaded",
-            "columnName": "uploaded",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "shortDescription",
-            "columnName": "shortDescription",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "isShort",
-            "columnName": "isShort",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "url"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_recommendStreamItem_url",
-            "unique": true,
-            "columnNames": [
-              "url"
-            ],
-            "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_recommendStreamItem_url` ON `${TABLE_NAME}` (`url`)"
-          }
-        ],
-        "foreignKeys": []
-      },
-      {
-        "tableName": "BlockListItem",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `type` TEXT, `touchCnt` INTEGER, `updatedTime` INTEGER NOT NULL, PRIMARY KEY(`id`))",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "type",
-            "columnName": "type",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "touchCnt",
-            "columnName": "touchCnt",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "updatedTime",
-            "columnName": "updatedTime",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
-        "tableName": "downloadItem",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT NOT NULL, `videoId` TEXT NOT NULL, `fileName` TEXT NOT NULL, `path` TEXT NOT NULL, `url` TEXT, `format` TEXT, `quality` TEXT, `downloadSize` INTEGER NOT NULL, FOREIGN KEY(`videoId`) REFERENCES `download`(`videoId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "type",
-            "columnName": "type",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "videoId",
-            "columnName": "videoId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "fileName",
-            "columnName": "fileName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "path",
-            "columnName": "path",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "url",
-            "columnName": "url",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "format",
-            "columnName": "format",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "quality",
-            "columnName": "quality",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "downloadSize",
-            "columnName": "downloadSize",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_downloadItem_path",
-            "unique": true,
-            "columnNames": [
-              "path"
-            ],
-            "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_downloadItem_path` ON `${TABLE_NAME}` (`path`)"
-          }
-        ],
-        "foreignKeys": [
-          {
-            "table": "download",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "videoId"
-            ],
-            "referencedColumns": [
-              "videoId"
-            ]
-          }
-        ]
-      },
-      {
         "tableName": "subscriptionGroups",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`name` TEXT NOT NULL, `channels` TEXT NOT NULL, PRIMARY KEY(`name`))",
         "fields": [
@@ -764,7 +496,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8827627b003a34ea58e9c461689898c5')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '90ff930e610982a362f9ef8bacae51f9')"
     ]
   }
 }

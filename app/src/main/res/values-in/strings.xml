@@ -86,7 +86,7 @@
     <string name="app_icon">Ikon</string>
     <string name="youtube">Youtube</string>
     <string name="category_selfpromo_description">Mirip dengan \"sponsor\" kecuali ini tidak dibayar atau promosi diri sendiri. Ini termasuk merchandise, donasi, atau informasi tentang siapa yang berkolaborasi dengan mereka.</string>
-    <string name="category_interaction">Pengingat interaksi (suka dan berlangganan)</string>
+    <string name="category_interaction">Pengingat interaksi</string>
     <string name="category_intro">Jeda/Animasi Intro</string>
     <string name="category_intro_description">Bagian yang bukan konten sebenarnya. Dapat berupa jeda, gambar statik, atau animasi berulang. Ini tidak boleh digunakan untuk transisi yang berisi informasi.</string>
     <string name="category_outro">Kartu akhir dan kredit</string>
@@ -432,4 +432,19 @@
     <string name="export_subscriptions_to">Ekspor langganan ke</string>
     <string name="import_format_newpipe">NewPipe</string>
     <string name="import_format_youtube_csv">YouTube (CSV)</string>
+    <string name="import_playlists_from">Impor daftar putar dari</string>
+    <string name="export_playlists_to">Ekspor daftar putar ke</string>
+    <string name="import_format_piped">Piped / LibreTube</string>
+    <string name="home_tab_content">Konten tab beranda</string>
+    <string name="mark_as_unwatched">Tandai sebagai belum ditonton</string>
+    <string name="choose_instance">Silakan pilih sebuah server terlebih dahulu!</string>
+    <string name="welcome">Selamat datang di LibreTube</string>
+    <string name="choose_instance_long">Silakan pilih sebuah server Piped untuk digunakan dari daftar bawah. Server Piped akan menjadi perantara antara Anda dan YouTube. Server yang ada di bawah terletak di lokasi fisik yang berbeda, ditandai oleh bendera negaranya. Server yang terletak lebih dekat dengan Anda kemunginkan lebih cepat daripada yang server yang terletak jauh. Anda dapat mengubah server yang digunakan dalam pengaturan kapan saja.</string>
+    <string name="playlist_description">Deskripsi daftar putar</string>
+    <string name="emptyPlaylistDescription">Deskripsi daftar putar tidak bisa kosong</string>
+    <string name="change_playlist_description">Ubah deskripsi daftar putar</string>
+    <string name="show_search_suggestions">Tampilkan saran pencarian</string>
+    <string name="manual">Manual</string>
+    <string name="off">Nonaktif</string>
+    <string name="automatic">Otomatis</string>
 </resources>

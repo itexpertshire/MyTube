@@ -88,7 +88,7 @@
     <string name="license">Licença</string>
     <string name="category_selfpromo">Não paga/Auto-promoção</string>
     <string name="category_selfpromo_description">Semelhante a \"patrocinador\", exceto para promoção não paga ou autopromoção. Isso inclui seções sobre mercadorias, doações ou informações sobre com quem eles colaboraram.</string>
-    <string name="category_interaction">Lembrete de interação (curtir e se inscrever)</string>
+    <string name="category_interaction">Lembrete de interação</string>
     <string name="category_interaction_description">Quando há um pequeno lembrete para curtir, inscrever-se ou seguir no meio do conteúdo. Deveria ser autopromoção se for longo ou sobre algo específico.</string>
     <string name="category_outro_description">Informações após o final. Não para conclusões com informações.</string>
     <string name="color_accent">Realces</string>
@@ -429,4 +429,28 @@
     <string name="duration">Duração</string>
     <string name="duration_reversed">Duração (invertida)</string>
     <string name="shorts_notifications">Notificações de shorts</string>
+    <string name="creation_date">Data de criação</string>
+    <string name="alphabetic">Alfabética</string>
+    <string name="creation_date_reversed">Data de criação (invertida)</string>
+    <string name="alphabetic_reversed">Alfabética (invertida)</string>
+    <string name="import_subscriptions_from">Importar inscrições de</string>
+    <string name="export_subscriptions_to">Exportar inscrições para</string>
+    <string name="import_format_freetube">FreeTube</string>
+    <string name="import_format_youtube_csv">YouTube (CSV)</string>
+    <string name="import_playlists_from">Importar playlists de</string>
+    <string name="export_playlists_to">Exportar playlists para</string>
+    <string name="import_format_piped">Piped / LibreTube</string>
+    <string name="import_format_newpipe">NewPipe</string>
+    <string name="home_tab_content">Conteúdo da aba inicial</string>
+    <string name="mark_as_unwatched">Marcar como não visto</string>
+    <string name="choose_instance_long">Escolha uma instância do Piped para usar abaixo. A instância do Piped atuará como intermediária entre você e o YouTube. Essas instâncias estão localizadas em locais físicos diferentes - indicados pela(s) bandeira(s) de seu país. Instâncias fisicamente mais próximas de você provavelmente são mais rápidas do que instâncias que não estão. Você pode alterar a instância que usa nas configurações a qualquer momento.</string>
+    <string name="choose_instance">Escolha uma instância primeiro!</string>
+    <string name="welcome">Bem-vindo ao LibreTube</string>
+    <string name="change_playlist_description">Alterar descrição da playlist</string>
+    <string name="playlist_description">Descrição da playlist</string>
+    <string name="emptyPlaylistDescription">A descrição da playlist não pode estar vazia</string>
+    <string name="show_search_suggestions">Mostrar sugestões de pesquisa</string>
+    <string name="off">Desligado</string>
+    <string name="manual">Manual</string>
+    <string name="automatic">Automático</string>
 </resources>

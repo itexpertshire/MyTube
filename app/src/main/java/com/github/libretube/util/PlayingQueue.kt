@@ -20,10 +20,6 @@ object PlayingQueue {
      */
     private var onQueueTapListener: (StreamItem) -> Unit = {}
 
-    /**
-     * Listener that gets called when the current playing video changes
-     */
-    private val onTrackChangedListeners: MutableList<(StreamItem) -> Unit> = mutableListOf()
     var repeatQueue: Boolean = false
 
     fun clear() = queue.clear()
@@ -46,26 +42,20 @@ object PlayingQueue {
         )
     }
 
+    // return the next item, or if repeating enabled, the first one of the queue
     fun getNext(): String? = queue.getOrNull(currentIndex() + 1)?.url?.toID()
         ?: queue.firstOrNull()?.url?.toID()?.takeIf { repeatQueue }
 
+    // return the previous item, or if repeating enabled, the last one of the queue
     fun getPrev(): String? = queue.getOrNull(currentIndex() - 1)?.url?.toID()
+        ?: queue.lastOrNull()?.url?.toID()?.takeIf { repeatQueue }
 
-    fun hasPrev(): Boolean {
-        return currentIndex() > 0
-    }
+    fun hasPrev() = getPrev() != null
 
-    fun hasNext(): Boolean {
-        return currentIndex() + 1 < size()
-    }
+    fun hasNext() = getNext() != null
 
     fun updateCurrent(streamItem: StreamItem) {
         currentStream = streamItem
-        onTrackChangedListeners.forEach {
-            runCatching {
-                it.invoke(streamItem)
-            }
-        }
         if (!contains(streamItem)) queue.add(0, streamItem)
     }
 
@@ -173,18 +163,9 @@ object PlayingQueue {
         onQueueTapListener = listener
     }
 
-    fun addOnTrackChangedListener(listener: (StreamItem) -> Unit) {
-        onTrackChangedListeners.add(listener)
-    }
-
-    fun removeOnTrackChangedListener(listener: (StreamItem) -> Unit) {
-        onTrackChangedListeners.remove(listener)
-    }
-
     fun resetToDefaults() {
         repeatQueue = false
         onQueueTapListener = {}
-        onTrackChangedListeners.clear()
     }
 
     fun mixSortStreams(streams: List<StreamItem>) : List<StreamItem> {

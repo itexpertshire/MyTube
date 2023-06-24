@@ -3,10 +3,12 @@ package com.github.libretube.ui.dialogs
 import android.app.Dialog
 import android.os.Bundle
 import android.text.InputFilter
+import android.text.format.Formatter
 import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -21,6 +23,7 @@ import com.github.libretube.extensions.TAG
 import com.github.libretube.extensions.getWhileDigit
 import com.github.libretube.helpers.DownloadHelper
 import com.github.libretube.helpers.PreferenceHelper
+import com.github.libretube.parcelable.DownloadData
 import com.github.libretube.util.TextUtils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +35,7 @@ import java.io.IOException
 class DownloadDialog(
     private val videoId: String,
 ) : DialogFragment() {
+    private var onDownloadConfirm = {}
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val binding = DialogDownloadBinding.inflate(layoutInflater)
 
@@ -58,7 +62,13 @@ class DownloadDialog(
 
         return MaterialAlertDialogBuilder(requireContext())
             .setView(binding.root)
+            .setPositiveButton(R.string.download, null)
             .show()
+            .apply {
+                getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    onDownloadConfirm.invoke()
+                }
+            }
     }
 
     private fun fetchAvailableSources(binding: DialogDownloadBinding) {
@@ -108,7 +118,10 @@ class DownloadDialog(
         val videoArrayAdapter = ArrayAdapter(
             requireContext(),
             R.layout.dropdown_item,
-            videoStreams.map { "${it.quality} ${it.format}" }.toMutableList().also {
+            videoStreams.map {
+                val fileSize = Formatter.formatShortFileSize(context, it.contentLength)
+                "${it.quality} ${it.format} ($fileSize)"
+            }.toMutableList().also {
                 it.add(0, getString(R.string.no_video))
             },
         )
@@ -116,7 +129,10 @@ class DownloadDialog(
         val audioArrayAdapter = ArrayAdapter(
             requireContext(),
             R.layout.dropdown_item,
-            audioStreams.map { "${it.quality} ${it.format}" }.toMutableList().also {
+            audioStreams.map {
+                val fileSize = Formatter.formatShortFileSize(context, it.contentLength)
+                "${it.quality} ${it.codec} ($fileSize)"
+            }.toMutableList().also {
                 it.add(0, getString(R.string.no_audio))
             },
         )
@@ -135,10 +151,10 @@ class DownloadDialog(
 
         restorePreviousSelections(binding, videoStreams, audioStreams, subtitles)
 
-        binding.download.setOnClickListener {
+        onDownloadConfirm = onDownloadConfirm@ {
             if (binding.fileName.text.toString().isEmpty()) {
                 Toast.makeText(context, R.string.invalid_filename, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+                return@onDownloadConfirm
             }
 
             val videoPosition = binding.videoSpinner.selectedItemPosition - 1
@@ -147,7 +163,7 @@ class DownloadDialog(
 
             if (listOf(videoPosition, audioPosition, subtitlePosition).all { it == -1 }) {
                 Toast.makeText(context, R.string.nothing_selected, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+                return@onDownloadConfirm
             }
 
             val videoStream = videoStreams.getOrNull(videoPosition)
@@ -156,16 +172,16 @@ class DownloadDialog(
 
             saveSelections(videoStream, audioStream, subtitle)
 
-            DownloadHelper.startDownloadService(
-                context = requireContext(),
+            val downloadData = DownloadData(
                 videoId = videoId,
-                fileName = binding.fileName.text.toString(),
+                fileName = binding.fileName.text?.toString(),
                 videoFormat = videoStream?.format,
                 videoQuality = videoStream?.quality,
                 audioFormat = audioStream?.format,
                 audioQuality = audioStream?.quality,
-                subtitleCode = subtitle?.code,
+                subtitleCode = subtitle?.code
             )
+            DownloadHelper.startDownloadService(requireContext(), downloadData)
 
             dismiss()
         }
@@ -217,7 +233,11 @@ class DownloadDialog(
         }
     }
 
-    private fun getStreamSelection(streams: List<PipedStream>, quality: String, format: String): Int? {
+    private fun getStreamSelection(
+        streams: List<PipedStream>,
+        quality: String,
+        format: String
+    ): Int? {
         if (quality.isBlank()) return null
 
         streams.forEachIndexed { index, pipedStream ->

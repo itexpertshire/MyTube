@@ -16,7 +16,6 @@ import android.os.PowerManager
 import android.text.format.DateUtils
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
-import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -71,22 +70,25 @@ import com.github.libretube.enums.PlayerEvent
 import com.github.libretube.enums.ShareObjectType
 import com.github.libretube.extensions.formatShort
 import com.github.libretube.extensions.hideKeyboard
+import com.github.libretube.extensions.parcelable
+import com.github.libretube.extensions.setMetadata
 import com.github.libretube.extensions.toID
 import com.github.libretube.extensions.toastFromMainDispatcher
 import com.github.libretube.extensions.updateParameters
 import com.github.libretube.helpers.BackgroundHelper
-import com.github.libretube.helpers.DashHelper
-import com.github.libretube.helpers.DisplayHelper
 import com.github.libretube.helpers.ImageHelper
+import com.github.libretube.helpers.LocaleHelper
 import com.github.libretube.helpers.NavigationHelper
 import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.helpers.PlayerHelper.checkForSegments
+import com.github.libretube.helpers.PlayerHelper.isInSegment
 import com.github.libretube.helpers.PlayerHelper.loadPlaybackParams
 import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.helpers.ProxyHelper
 import com.github.libretube.obj.PlayerNotificationData
 import com.github.libretube.obj.ShareData
 import com.github.libretube.obj.VideoResolution
+import com.github.libretube.parcelable.PlayerData
 import com.github.libretube.services.DownloadService
 import com.github.libretube.ui.activities.MainActivity
 import com.github.libretube.ui.adapters.ChaptersAdapter
@@ -109,7 +111,9 @@ import com.github.libretube.util.NowPlayingNotification
 import com.github.libretube.util.PlayingQueue
 import com.github.libretube.util.TextUtils
 import com.github.libretube.util.TextUtils.toTimeInSeconds
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import java.io.IOException
+import java.util.*
+import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -117,11 +121,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import retrofit2.HttpException
-import java.io.IOException
-import java.util.*
-import java.util.concurrent.Executors
-import com.github.libretube.extensions.setMetadata
 import kotlin.math.abs
+
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerFragment : Fragment(), OnlinePlayerOptions {
@@ -138,11 +139,11 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
     /**
      * Video information passed by the intent
      */
-    private var videoId: String? = null
+    private lateinit var videoId: String
     private var playlistId: String? = null
     private var channelId: String? = null
     private var keepQueue: Boolean = false
-    private var timeStamp: Long? = null
+    private var timeStamp: Long = 0
 
     /**
      * Video information fetched at runtime
@@ -183,6 +184,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
      */
     private var segments = listOf<Segment>()
     private var sponsorBlockEnabled = PlayerHelper.sponsorBlockEnabled
+    private var sponsorBlockConfig = PlayerHelper.getSponsorBlockCategories()
 
     private val handler = Handler(Looper.getMainLooper())
     private val mainActivity get() = activity as MainActivity
@@ -235,19 +237,26 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        arguments?.let {
-            videoId = it.getString(IntentData.videoId)!!.toID()
-            playlistId = it.getString(IntentData.playlistId)
-            channelId = it.getString(IntentData.channelId)
-            keepQueue = it.getBoolean(IntentData.keepQueue, false)
-            timeStamp = it.getLong(IntentData.timeStamp, 0L)
-        }
+        val playerData = requireArguments().parcelable<PlayerData>(IntentData.playerData)!!
+        videoId = playerData.videoId
+        playlistId = playerData.playlistId
+        channelId = playerData.channelId
+        keepQueue = playerData.keepQueue
+        timeStamp = playerData.timestamp
 
         // broadcast receiver for PiP actions
         context?.registerReceiver(
             broadcastReceiver,
             IntentFilter(PlayerHelper.getIntentActon(requireContext())),
         )
+
+        // schedule task to save the watch position each second
+        Timer().scheduleAtFixedRate(object : TimerTask() {
+            override fun run() {
+                handler.post(this@PlayerFragment::saveWatchPosition)
+            }
+        }, 1000, 1000)
+
     }
 
     override fun onCreateView(
@@ -383,7 +392,6 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
         }
 
         binding.commentsToggle.setOnClickListener {
-            videoId ?: return@setOnClickListener
             // set the max height to not cover the currently playing video
             commentsViewModel.handleLink = this::handleLink
             commentsViewModel.maxHeight = binding.root.height - binding.player.height
@@ -427,7 +435,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
             if (!this::streams.isInitialized) return@setOnClickListener
             val shareDialog =
                 ShareDialog(
-                    videoId!!,
+                    videoId,
                     ShareObjectType.VIDEO,
                     ShareData(
                         currentVideo = streams.title,
@@ -438,7 +446,8 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
         }
 
         binding.relPlayerShare.setOnLongClickListener {
-            streams.hls ?: return@setOnLongClickListener true
+            if (!this::streams.isInitialized || streams.hls == null)
+                return@setOnLongClickListener true
 
             // start an intent with video as mimetype using the hls stream
             val uri = Uri.parse(ProxyHelper.unwrapIfEnabled(streams.hls!!))
@@ -479,7 +488,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
         BackgroundHelper.stopBackgroundPlay(requireContext())
         BackgroundHelper.playOnBackground(
             requireContext(),
-            videoId!!,
+            videoId,
             exoPlayer.currentPosition,
             playlistId,
             channelId,
@@ -552,7 +561,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
             streams.views.formatShort()
         } else {
             // show exact view count
-            String.format("%,d", streams.views)
+            "%,d".format(streams.views)
         }
         val viewInfo = getString(R.string.normal_views, views, localizeDate(streams))
         if (binding.descLinLayout.isVisible) {
@@ -575,9 +584,8 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
         if (this::chapters.isInitialized && chapters.isNotEmpty()) {
             val chapterIndex = getCurrentChapterIndex() ?: return
             // scroll to the current chapter in the chapterRecView in the description
-            val layoutManager = binding.chaptersRecView.layoutManager as LinearLayoutManager
-            layoutManager.scrollToPositionWithOffset(chapterIndex, 0)
-            // set selected
+            binding.chaptersRecView.scrollToPosition(chapterIndex)
+            // set selected item, that should be highlighted
             val chaptersAdapter = binding.chaptersRecView.adapter as ChaptersAdapter
             chaptersAdapter.updateSelectedPosition(chapterIndex)
         }
@@ -616,9 +624,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
         }
 
         try {
-            if (exoPlayer.duration != C.TIME_UNSET) saveWatchPosition()
-
-            PlayingQueue.clear()
+            saveWatchPosition()
 
             nowPlayingNotification.destroySelfAndPlayer()
 
@@ -637,8 +643,13 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
 
     // save the watch position if video isn't finished and option enabled
     private fun saveWatchPosition() {
-        if (!PlayerHelper.watchPositionsVideo || exoPlayer.currentPosition == 0L) return
-        val watchPosition = WatchPosition(videoId!!, exoPlayer.currentPosition)
+        if (!this::exoPlayer.isInitialized || !PlayerHelper.watchPositionsVideo || transitioning
+            || exoPlayer.duration == C.TIME_UNSET || exoPlayer.currentPosition in listOf(
+                0L,
+                C.TIME_UNSET
+            )
+        ) return
+        val watchPosition = WatchPosition(videoId, exoPlayer.currentPosition)
         CoroutineScope(Dispatchers.IO).launch {
             Database.watchPositionDao().insert(watchPosition)
         }
@@ -653,7 +664,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
 
         if (segments.isEmpty()) return
 
-        exoPlayer.checkForSegments(requireContext(), segments, PlayerHelper.skipSegmentsManually)
+        exoPlayer.checkForSegments(requireContext(), segments, sponsorBlockConfig)
             ?.let { segmentEnd ->
                 binding.sbSkipBtn.visibility = View.VISIBLE
                 binding.sbSkipBtn.setOnClickListener {
@@ -661,8 +672,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
                 }
                 return
             }
-
-        if (PlayerHelper.skipSegmentsManually) binding.sbSkipBtn.visibility = View.GONE
+        if (!exoPlayer.isInSegment(segments)) binding.sbSkipBtn.visibility = View.GONE
     }
 
     private fun playVideo() {
@@ -675,7 +685,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
 
         lifecycleScope.launch(Dispatchers.IO) {
             streams = try {
-                RetrofitInstance.api.getStreams(videoId!!)
+                RetrofitInstance.api.getStreams(videoId)
             } catch (e: IOException) {
                 context?.toastFromMainDispatcher(R.string.unknown_error, Toast.LENGTH_LONG)
                 return@launch
@@ -690,18 +700,18 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
             if (PlayingQueue.isEmpty()) {
                 lifecycleScope.launch(Dispatchers.IO) {
                     if (playlistId != null) {
-                        PlayingQueue.insertPlaylist(playlistId!!, streams.toStreamItem(videoId!!))
+                        PlayingQueue.insertPlaylist(playlistId!!, streams.toStreamItem(videoId))
                     } else if (channelId != null) {
-                        PlayingQueue.insertChannel(channelId!!, streams.toStreamItem(videoId!!))
+                        PlayingQueue.insertChannel(channelId!!, streams.toStreamItem(videoId))
                     } else {
-                        PlayingQueue.updateCurrent(streams.toStreamItem(videoId!!))
+                        PlayingQueue.updateCurrent(streams.toStreamItem(videoId))
                         if (PlayerHelper.autoInsertRelatedVideos) {
                             PlayingQueue.add(*streams.relatedStreams.toTypedArray())
                         }
                     }
                 }
             } else {
-                PlayingQueue.updateCurrent(streams.toStreamItem(videoId!!))
+                PlayingQueue.updateCurrent(streams.toStreamItem(videoId))
             }
 
             if (PreferenceHelper.getBoolean(PreferenceKeys.AUTO_FULLSCREEN_SHORTS, false)) {
@@ -740,7 +750,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
                 if (binding.playerMotionLayout.progress != 1.0f) {
                     // show controllers when not in picture in picture mode
                     val inPipMode = PlayerHelper.pipEnabled &&
-                        PictureInPictureCompat.isInPictureInPictureMode(requireActivity())
+                            PictureInPictureCompat.isInPictureInPictureMode(requireActivity())
                     if (!inPipMode) {
                         binding.player.useController = true
                     }
@@ -751,7 +761,8 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
 
                 // add the video to the watch history
                 if (PlayerHelper.watchHistoryEnabled) {
-                    DatabaseHelper.addToWatchHistory(videoId!!, streams)
+                    DatabaseHelper.addToWatchHistory(videoId, streams)
+                    //DatabaseHelper.addToWatchHistory(videoId!!, streams)
                     //Store details of watched videos
                     DatabaseHelper.addToKeywordHistory(videoId!!, streams)
                 }
@@ -765,12 +776,11 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
     private fun fetchSponsorBlockSegments() {
         lifecycleScope.launch(Dispatchers.IO) {
             runCatching {
-                val categories = PlayerHelper.getSponsorBlockCategories()
-                if (categories.isEmpty()) return@runCatching
+                if (sponsorBlockConfig.isEmpty()) return@runCatching
                 segments =
                     RetrofitInstance.api.getSegments(
-                        videoId!!,
-                        JsonHelper.json.encodeToString(categories),
+                        videoId,
+                        JsonHelper.json.encodeToString(sponsorBlockConfig.keys),
                     ).segments
                 if (segments.isEmpty()) return@runCatching
 
@@ -808,7 +818,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
         // browse the watch positions
         val position = try {
             runBlocking {
-                Database.watchPositionDao().findById(videoId!!)?.position
+                Database.watchPositionDao().findById(videoId)?.position
             }
         } catch (e: Exception) {
             return
@@ -824,11 +834,11 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
      */
     private fun trySeekToTimeStamp() {
         // support for time stamped links
-        timeStamp?.let {
-            if (it != 0L) exoPlayer.seekTo(it * 1000)
+        if (timeStamp != 0L) {
+            exoPlayer.seekTo(timeStamp * 1000)
         }
         // delete the time stamp because it already got consumed
-        timeStamp = null
+        timeStamp = 0
     }
 
     // used for autoplay and skipping to next video
@@ -879,14 +889,8 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
     @SuppressLint("SetTextI18n")
     private fun initializePlayerView() {
         // initialize the player view actions
-        binding.player.initialize(
-            this,
-            doubleTapOverlayBinding,
-            playerGestureControlsViewBinding,
-            trackSelector,
-            viewModel,
-            viewLifecycleOwner,
-        )
+        binding.player.initialize(doubleTapOverlayBinding, playerGestureControlsViewBinding)
+        binding.player.initPlayerOptions(viewModel, viewLifecycleOwner, trackSelector, this)
 
         binding.apply {
             val views = streams.views.formatShort()
@@ -951,11 +955,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
-                // save the watch position to the database
-                // only called when the position is unequal to 0, otherwise it would become reset
-                // before the player can seek to the saved position from videos of the queue
-                // not called when the video has ended, since it then might save it to the next autoplay video
-                if (playbackState != Player.STATE_ENDED) saveWatchPosition()
+                saveWatchPosition()
 
                 // check if video has ended, next video is available and autoplay is enabled.
                 if (
@@ -1003,7 +1003,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
             if (streams.duration <= 0) {
                 Toast.makeText(context, R.string.cannotDownload, Toast.LENGTH_SHORT).show()
             } else if (!DownloadService.IS_DOWNLOAD_RUNNING) {
-                val newFragment = DownloadDialog(videoId!!)
+                val newFragment = DownloadDialog(videoId)
                 newFragment.show(childFragmentManager, DownloadDialog::class.java.name)
             } else {
                 Toast.makeText(context, R.string.dlisinprogress, Toast.LENGTH_SHORT)
@@ -1036,7 +1036,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
         )
 
         binding.relPlayerSave.setOnClickListener {
-            AddToPlaylistDialog(videoId!!).show(
+            AddToPlaylistDialog(videoId).show(
                 childFragmentManager,
                 AddToPlaylistDialog::class.java.name,
             )
@@ -1054,6 +1054,8 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
     }
 
     private fun showAutoPlayCountdown() {
+        if (!PlayingQueue.hasNext()) return
+
         binding.player.useController = false
         binding.player.hideController()
         binding.autoplayCountdown.setHideSelfListener {
@@ -1191,16 +1193,8 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
         binding.chaptersRecView.adapter = ChaptersAdapter(chapters, exoPlayer)
 
         // enable the chapters dialog in the player
-        val titles = chapters.map { chapter ->
-            "(${DateUtils.formatElapsedTime(chapter.start)}) ${chapter.title}"
-        }
         playerBinding.chapterLL.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.chapters)
-                .setItems(titles.toTypedArray()) { _, index ->
-                    exoPlayer.seekTo(chapters[index].start * 1000)
-                }
-                .show()
+            PlayerHelper.showChaptersDialog(requireContext(), chapters, exoPlayer)
         }
 
         setCurrentChapterName()
@@ -1321,15 +1315,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
                 val uri = streams.dash?.let { ProxyHelper.unwrapIfEnabled(it) }?.toUri().takeIf {
                     streams.livestream || streams.videoStreams.isEmpty()
                 } ?: let {
-                    val manifest = DashHelper.createManifest(
-                        streams,
-                        DisplayHelper.supportsHdr(requireContext()),
-                    )
-
-                    // encode to base64
-                    val encoded = Base64.encodeToString(manifest.toByteArray(), Base64.DEFAULT)
-
-                    "data:application/dash+xml;charset=utf-8;base64,$encoded".toUri()
+                    PlayerHelper.createDashSource(streams, requireContext())
                 }
 
                 this.setMediaSource(uri, MimeTypes.APPLICATION_MPD)
@@ -1360,7 +1346,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
 
         trackSelector.updateParameters {
             setPreferredAudioLanguage(
-                Locale.getDefault().language.lowercase().substring(0, 2),
+                LocaleHelper.getAppLocale().language.lowercase().substring(0, 2),
             )
         }
 
@@ -1387,7 +1373,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
             streams.uploader,
             streams.thumbnailUrl,
         )
-        nowPlayingNotification.updatePlayerNotification(videoId!!, playerNotificationData)
+        nowPlayingNotification.updatePlayerNotification(videoId, playerNotificationData)
     }
 
     /**
@@ -1466,7 +1452,7 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
 
     override fun onStatsClicked() {
         if (!this::streams.isInitialized) return
-        StatsDialog(exoPlayer, videoId ?: return)
+        StatsDialog(exoPlayer, videoId)
             .show(childFragmentManager, null)
     }
 
@@ -1569,11 +1555,14 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
     }
 
     private fun shouldStartPiP(): Boolean {
-        return usePiP() && exoPlayer.isPlaying && !BackgroundHelper.isBackgroundServiceRunning(requireContext())
+        return usePiP() && exoPlayer.isPlaying && !BackgroundHelper.isBackgroundServiceRunning(
+            requireContext()
+        )
     }
 
     private fun killPlayerFragment() {
         viewModel.isFullscreen.value = false
+        viewModel.isMiniPlayerVisible.value = false
         binding.playerMotionLayout.transitionToEnd()
         mainActivity.supportFragmentManager.commit {
             remove(this@PlayerFragment)
