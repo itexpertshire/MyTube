@@ -58,7 +58,7 @@ object PreferenceKeys {
      * Player
      */
     const val AUTO_FULLSCREEN = "auto_fullscreen"
-    const val AUTO_PLAY = "autoplay"
+    const val AUTOPLAY = "autoplay"
     const val RELATED_STREAMS = "related_streams_toggle"
     const val CUSTOM_PLAYBACK_SPEED = "custom_playback_speed"
     const val PLAYBACK_SPEED = "playback_speed"
@@ -99,6 +99,8 @@ object PreferenceKeys {
     const val PLAY_AUTOMATICALLY = "play_automatically"
     const val FULLSCREEN_GESTURES = "fullscreen_gestures"
     const val UNLIMITED_SEARCH_HISTORY = "unlimited_search_history"
+    const val SB_HIGHLIGHTS = "sb_highlights"
+    const val SHOW_TIME_LEFT = "show_time_left"
 
     /**
      * Background mode

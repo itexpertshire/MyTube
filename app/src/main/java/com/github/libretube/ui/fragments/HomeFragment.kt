@@ -36,6 +36,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.chromium.base.ThreadUtils.runOnUiThread
 
 class HomeFragment : Fragment() {
     //lateinit var binding: FragmentHomeBinding
@@ -90,16 +91,18 @@ class HomeFragment : Fragment() {
                 val defaultItems = resources.getStringArray(R.array.homeTabItemsValues)
                 val visibleItems = PreferenceHelper
                     .getStringSet(PreferenceKeys.HOME_TAB_CONTENT, defaultItems.toSet())
+                Log.d("Amit","visibleItems- $visibleItems")
                 awaitAll(
                     //async { loadTrending() },
-                    async { loadRecommendationLocal()},
+
                     //async { loadBookmarks() },
                     //async { loadFeed() },
                     //async { loadPlaylists() },
-                    async { if (visibleItems.contains(TRENDING)) loadTrending() },
+                    //async { if (visibleItems.contains(TRENDING)) loadTrending() },
                     async { if (visibleItems.contains(BOOKMARKS)) loadBookmarks() },
                     async { if (visibleItems.contains(FEATURED)) loadFeed() },
                     async { if (visibleItems.contains(PLAYLISTS)) loadPlaylists() },
+                    async { loadRecommendationLocal()},
                 )
 
                 val binding = _binding ?: return@repeatOnLifecycle
@@ -141,7 +144,8 @@ class HomeFragment : Fragment() {
         recommAdapter= VideosAdapter(
             recommendation.toMutableList(),
             showAllAtOnce = false,
-            hideWatched = PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false)
+            hideWatched = PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false),
+            forceMode = VideosAdapter.Companion.ForceMode.TRENDING,
         )
 
         //runOnUiThread {
@@ -149,7 +153,7 @@ class HomeFragment : Fragment() {
             binding.trendingRV.layoutManager = GridLayoutManager(context, 1)
 
             binding.trendingRV.adapter =recommAdapter
-
+        Log.d("Amit","Function-loadRecommendationLocal - recommAdapter - ${recommAdapter.itemCount}")
             binding.scroll.setOnScrollChangeListener(object: RecyclerView.OnScrollListener(),
                 View.OnScrollChangeListener {
                 override fun onScrollChange(p0: View?, p1: Int, p2: Int, p3: Int, p4: Int) {
@@ -172,9 +176,9 @@ class HomeFragment : Fragment() {
 
 
     private suspend fun loadFeed() {
-        val savedFeed = withContext(Dispatchers.Main) {
+        val savedFeed =
             subscriptionsViewModel.videoFeed.value
-        }
+
         val feed = if (
             PreferenceHelper.getBoolean(PreferenceKeys.SAVE_FEED, false) &&
             !savedFeed.isNullOrEmpty()
@@ -185,9 +189,7 @@ class HomeFragment : Fragment() {
         }.takeIf { it.isNotEmpty() }?.take(FEATURED_VIDEO_MAX_CNT) ?: return
 
         //Log.d("Amit","custom sort feed-$feed")
-
-
-        /*
+/*
         runOnUiThread {
             makeVisible(binding.featuredRV, binding.featuredTV)
             binding.featuredRV.layoutManager = LinearLayoutManager(
@@ -199,82 +201,84 @@ class HomeFragment : Fragment() {
                 feed.toMutableList(),
                 forceMode = VideosAdapter.Companion.ForceMode.HOME
             )
-        } */
-        val binding = _binding ?: return
-
-        makeVisible(binding.featuredRV, binding.featuredTV)
-        binding.featuredRV.layoutManager = LinearLayoutManager(
-            context,
-            LinearLayoutManager.HORIZONTAL,
-            false,
-        )
-        binding.featuredRV.adapter = VideosAdapter(
-            feed.toMutableList(),
-            forceMode = VideosAdapter.Companion.ForceMode.HOME,
-        )
-    }
-
-    private suspend fun loadBookmarks() {
-        val bookmarkedPlaylists = withContext(Dispatchers.IO) {
-            DatabaseHolder.Database.playlistBookmarkDao().getAll()
-        }.takeIf { it.isNotEmpty() } ?: return
-
-
-        val binding = _binding ?: return
-
-        makeVisible(binding.bookmarksTV, binding.bookmarksRV)
-        binding.bookmarksRV.layoutManager = LinearLayoutManager(
-            context,
-            LinearLayoutManager.HORIZONTAL,
-            false,
-        )
-        binding.bookmarksRV.adapter = PlaylistBookmarkAdapter(
-            bookmarkedPlaylists,
-            PlaylistBookmarkAdapter.Companion.BookmarkMode.HOME,
-        )
-    }
-
-    private suspend fun loadPlaylists() {
-        val playlists = runCatching {
-            withContext(Dispatchers.IO) {
-                PlaylistsHelper.getPlaylists().take(20)
-            }
-        }.getOrNull()?.takeIf { it.isNotEmpty() } ?: return
-        val binding = _binding ?: return
-
-        makeVisible(binding.playlistsRV, binding.playlistsTV)
-        binding.playlistsRV.layoutManager = LinearLayoutManager(context)
-        binding.playlistsRV.adapter = PlaylistsAdapter(
-            playlists.toMutableList(),
-            PlaylistsHelper.getPrivatePlaylistType(),
-        )
-        binding.playlistsRV.adapter?.registerAdapterDataObserver(object :
-            RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-                super.onItemRangeRemoved(positionStart, itemCount)
-                if (itemCount == 0) {
-                    binding.playlistsRV.visibility = View.GONE
-                    binding.playlistsTV.visibility = View.GONE
-                }
-            }
-        })
-    }
-
-    private fun makeVisible(vararg views: View) {
-        views.forEach {
-            it.isVisible = true
         }
-        val binding = _binding ?: return
-        binding.progress.isGone = true
-        binding.scroll.isVisible = true
-        binding.refresh.isRefreshing = false
-    }
 
-    companion object {
-        // The values of the preference entries for the home tab content
-        private const val FEATURED = "featured"
-        private const val TRENDING = "trending"
-        private const val BOOKMARKS = "bookmarks"
-        private const val PLAYLISTS = "playlists"
-    }
+ */
+     val binding = _binding ?: return
+
+     makeVisible(binding.featuredRV, binding.featuredTV)
+     binding.featuredRV.layoutManager = LinearLayoutManager(
+         context,
+         LinearLayoutManager.HORIZONTAL,
+         false,
+     )
+     binding.featuredRV.adapter = VideosAdapter(
+         feed.toMutableList(),
+         forceMode = VideosAdapter.Companion.ForceMode.HOME,
+     )
+}
+
+private suspend fun loadBookmarks() {
+ val bookmarkedPlaylists = withContext(Dispatchers.IO) {
+     DatabaseHolder.Database.playlistBookmarkDao().getAll()
+ }.takeIf { it.isNotEmpty() } ?: return
+
+
+ val binding = _binding ?: return
+
+ makeVisible(binding.bookmarksTV, binding.bookmarksRV)
+ binding.bookmarksRV.layoutManager = LinearLayoutManager(
+     context,
+     LinearLayoutManager.HORIZONTAL,
+     false,
+ )
+ binding.bookmarksRV.adapter = PlaylistBookmarkAdapter(
+     bookmarkedPlaylists,
+     PlaylistBookmarkAdapter.Companion.BookmarkMode.HOME,
+ )
+}
+
+private suspend fun loadPlaylists() {
+ val playlists = runCatching {
+     withContext(Dispatchers.IO) {
+         PlaylistsHelper.getPlaylists().take(20)
+     }
+ }.getOrNull()?.takeIf { it.isNotEmpty() } ?: return
+ val binding = _binding ?: return
+
+ makeVisible(binding.playlistsRV, binding.playlistsTV)
+ binding.playlistsRV.layoutManager = LinearLayoutManager(context)
+ binding.playlistsRV.adapter = PlaylistsAdapter(
+     playlists.toMutableList(),
+     PlaylistsHelper.getPrivatePlaylistType(),
+ )
+ binding.playlistsRV.adapter?.registerAdapterDataObserver(object :
+     RecyclerView.AdapterDataObserver() {
+     override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+         super.onItemRangeRemoved(positionStart, itemCount)
+         if (itemCount == 0) {
+             binding.playlistsRV.visibility = View.GONE
+             binding.playlistsTV.visibility = View.GONE
+         }
+     }
+ })
+}
+
+private fun makeVisible(vararg views: View) {
+ views.forEach {
+     it.isVisible = true
+ }
+ val binding = _binding ?: return
+ binding.progress.isGone = true
+ binding.scroll.isVisible = true
+ binding.refresh.isRefreshing = false
+}
+
+companion object {
+ // The values of the preference entries for the home tab content
+ private const val FEATURED = "featured"
+ private const val TRENDING = "trending"
+ private const val BOOKMARKS = "bookmarks"
+ private const val PLAYLISTS = "playlists"
+}
 }

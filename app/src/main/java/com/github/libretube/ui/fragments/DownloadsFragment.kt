@@ -63,7 +63,7 @@ class DownloadsFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?,
+        savedInstanceState: Bundle?
     ): View {
         _binding = FragmentDownloadsBinding.inflate(inflater)
         return binding.root
@@ -120,7 +120,7 @@ class DownloadsFragment : Fragment() {
                         binding.downloadsEmpty.visibility = View.VISIBLE
                     }
                 }
-            },
+            }
         )
     }
 
@@ -152,25 +152,31 @@ class DownloadsFragment : Fragment() {
         val index = downloads.indexOfFirst {
             it.downloadItems.any { item -> item.id == id }
         }
-        val view = _binding?.downloads?.findViewHolderForAdapterPosition(index) as? DownloadsViewHolder
+        val view =
+            _binding?.downloads?.findViewHolderForAdapterPosition(index) as? DownloadsViewHolder
 
         view?.binding?.apply {
             when (status) {
                 DownloadStatus.Paused -> {
                     resumePauseBtn.setImageResource(R.drawable.ic_download)
                 }
+
                 DownloadStatus.Completed -> {
                     downloadOverlay.visibility = View.GONE
                 }
+
+                DownloadStatus.Stopped -> Unit
+
                 is DownloadStatus.Progress -> {
                     downloadOverlay.visibility = View.VISIBLE
                     resumePauseBtn.setImageResource(R.drawable.ic_pause)
                     if (progressBar.isIndeterminate) return
                     progressBar.incrementProgressBy(status.progress.toInt())
                     val progressInfo = progressBar.progress.formatAsFileSize() +
-                        " /\n" + progressBar.max.formatAsFileSize()
+                            " /\n" + progressBar.max.formatAsFileSize()
                     fileSize.text = progressInfo
                 }
+
                 is DownloadStatus.Error -> {
                     resumePauseBtn.setImageResource(R.drawable.ic_restart)
                 }

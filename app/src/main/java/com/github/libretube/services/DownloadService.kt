@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.PendingIntentCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.getSystemService
+import androidx.core.util.remove
 import androidx.core.util.set
 import androidx.core.util.valueIterator
 import androidx.lifecycle.LifecycleService
@@ -38,19 +39,8 @@ import com.github.libretube.parcelable.DownloadData
 import com.github.libretube.receivers.NotificationReceiver
 import com.github.libretube.receivers.NotificationReceiver.Companion.ACTION_DOWNLOAD_PAUSE
 import com.github.libretube.receivers.NotificationReceiver.Companion.ACTION_DOWNLOAD_RESUME
+import com.github.libretube.receivers.NotificationReceiver.Companion.ACTION_DOWNLOAD_STOP
 import com.github.libretube.ui.activities.MainActivity
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okio.buffer
-import okio.sink
-import okio.source
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
@@ -58,6 +48,20 @@ import java.net.URL
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.concurrent.Executors
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okio.buffer
+import okio.sink
+import okio.source
 import kotlin.io.path.absolute
 import kotlin.io.path.createFile
 import kotlin.io.path.deleteIfExists
@@ -88,15 +92,17 @@ class DownloadService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        val downloadId = intent?.getIntExtra("id", -1)
         when (intent?.action) {
-            ACTION_DOWNLOAD_RESUME -> resume(intent.getIntExtra("id", -1))
-            ACTION_DOWNLOAD_PAUSE -> pause(intent.getIntExtra("id", -1))
+            ACTION_DOWNLOAD_RESUME -> resume(downloadId!!)
+            ACTION_DOWNLOAD_PAUSE -> pause(downloadId!!)
+            ACTION_DOWNLOAD_STOP -> stop(downloadId!!)
         }
 
-        val (videoId, name, videoFormat, videoQuality, audioFormat, audioQuality, subtitleCode) =
-            intent?.parcelableExtra<DownloadData>(IntentData.downloadData)
-                ?: return START_NOT_STICKY
-        val fileName = name ?: videoId
+        val downloadData = intent?.parcelableExtra<DownloadData>(IntentData.downloadData)
+            ?: return START_NOT_STICKY
+        val (videoId, name) = downloadData
+        val fileName = name.ifEmpty { videoId }
 
         lifecycleScope.launch(coroutineContext) {
             try {
@@ -112,24 +118,16 @@ class DownloadService : LifecycleService() {
                     streams.description,
                     streams.uploader,
                     streams.uploadDate,
-                    thumbnailTargetPath,
+                    thumbnailTargetPath
                 )
                 Database.downloadDao().insertDownload(download)
                 ImageHelper.downloadImage(
                     this@DownloadService,
                     streams.thumbnailUrl,
-                    thumbnailTargetPath,
+                    thumbnailTargetPath
                 )
 
-                val downloadItems = streams.toDownloadItems(
-                    videoId,
-                    fileName,
-                    videoFormat,
-                    videoQuality,
-                    audioFormat,
-                    audioQuality,
-                    subtitleCode,
-                )
+                val downloadItems = streams.toDownloadItems(downloadData.copy(fileName = fileName))
                 downloadItems.forEach { start(it) }
             } catch (e: Exception) {
                 return@launch
@@ -172,88 +170,103 @@ class DownloadService : LifecycleService() {
         // only fetch the content length if it's not been returned by the API
         if (item.downloadSize == 0L) {
             url.getContentLength()?.let { size ->
-        Log.d("Amit","url-${url}")
-        url.getContentLength().let { size ->
-            if (size > 0 && size != item.downloadSize) {
-                item.downloadSize = size
-                Database.downloadDao().updateDownloadItem(item)
-            }
-        }
-
-        while (totalRead < item.downloadSize) {
-            try {
-                val con = startConnection(item, url, totalRead, item.downloadSize) ?: return
-
-                @Suppress("NewApi") // The StandardOpenOption enum is desugared.
-                val sink = path.sink(StandardOpenOption.APPEND).buffer()
-                val sourceByte = con.inputStream.source()
-
-                var lastTime = System.currentTimeMillis() / 1000
-                var lastRead: Long = 0
-
-                try {
-                    // Check if downloading is still active and read next bytes.
-                    while (downloadQueue[item.id] && sourceByte
-                            .read(sink.buffer, DownloadHelper.DOWNLOAD_CHUNK_SIZE)
-                            .also { lastRead = it } != -1L
-                    ) {
-                        sink.emit()
-                        totalRead += lastRead
-                        _downloadFlow.emit(
-                            item.id to DownloadStatus.Progress(
-                                lastRead,
-                                totalRead,
-                                item.downloadSize,
-                            ),
-                        )
-                        if (item.downloadSize != -1L &&
-                            System.currentTimeMillis() / 1000 > lastTime
-                        ) {
-                            notificationBuilder
-                                .setContentText(
-                                    totalRead.formatAsFileSize() + " / " +
-                                            item.downloadSize.formatAsFileSize(),
-                                )
-                                .setProgress(
-                                    item.downloadSize.toInt(),
-                                    totalRead.toInt(),
-                                    false,
-                                )
-                            notificationManager.notify(
-                                item.getNotificationId(),
-                                notificationBuilder.build(),
-                            )
-                            lastTime = System.currentTimeMillis() / 1000
+                Log.d("Amit", "url-${url}")
+                url.getContentLength().let { size ->
+                    if (size != null) {
+                        if (size > 0 && size != item.downloadSize) {
+                            item.downloadSize = size
+                            Database.downloadDao().updateDownloadItem(item)
                         }
                     }
-                } catch (_: CancellationException) {
-                } catch (e: Exception) {
-                    toastFromMainThread("${getString(R.string.download)}: ${e.message}")
-                    _downloadFlow.emit(item.id to DownloadStatus.Error(e.message.toString(), e))
                 }
 
-                withContext(Dispatchers.IO) {
-                    sink.flush()
-                    sink.close()
-                    sourceByte.close()
-                    con.disconnect()
-                }
-            } catch (_: Exception) {}
-        }
+                while (totalRead < item.downloadSize) {
+                    try {
+                        val con = startConnection(item, url, totalRead, item.downloadSize) ?: return
 
-        val completed = when {
-            totalRead < item.downloadSize -> {
-                _downloadFlow.emit(item.id to DownloadStatus.Paused)
-                false
+                        @Suppress("NewApi") // The StandardOpenOption enum is desugared.
+                        val sink = path.sink(StandardOpenOption.APPEND).buffer()
+                        val sourceByte = con.inputStream.source()
+
+                        var lastTime = System.currentTimeMillis() / 1000
+                        var lastRead: Long = 0
+
+                        try {
+                            // Check if downloading is still active and read next bytes.
+                            while (downloadQueue[item.id] && sourceByte
+                                    .read(sink.buffer, DownloadHelper.DOWNLOAD_CHUNK_SIZE)
+                                    .also { lastRead = it } != -1L
+                            ) {
+                                sink.emit()
+                                totalRead += lastRead
+                                _downloadFlow.emit(
+                                    item.id to DownloadStatus.Progress(
+                                        lastRead,
+                                        totalRead,
+                                        item.downloadSize
+                                    )
+                                )
+                                if (item.downloadSize != -1L &&
+                                    System.currentTimeMillis() / 1000 > lastTime
+                                ) {
+                                    notificationBuilder
+                                        .setContentText(
+                                            totalRead.formatAsFileSize() + " / " +
+                                                    item.downloadSize.formatAsFileSize()
+                                        )
+                                        .setProgress(
+                                            item.downloadSize.toInt(),
+                                            totalRead.toInt(),
+                                            false
+                                        )
+                                    notificationManager.notify(
+                                        item.getNotificationId(),
+                                        notificationBuilder.build()
+                                    )
+                                    lastTime = System.currentTimeMillis() / 1000
+                                }
+                            }
+                        } catch (_: CancellationException) {
+                        } catch (e: Exception) {
+                            toastFromMainThread("${getString(R.string.download)}: ${e.message}")
+                            _downloadFlow.emit(
+                                item.id to DownloadStatus.Error(
+                                    e.message.toString(),
+                                    e
+                                )
+                            )
+                        }
+
+                        withContext(Dispatchers.IO) {
+                            sink.flush()
+                            sink.close()
+                            sourceByte.close()
+                            con.disconnect()
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+
+                if (_downloadFlow.firstOrNull { it.first == item.id }?.second == DownloadStatus.Stopped) {
+                    downloadQueue.remove(item.id, false)
+                    return
+                }
+
+                val completed = when {
+                    totalRead < item.downloadSize -> {
+                        _downloadFlow.emit(item.id to DownloadStatus.Paused)
+                        false
+                    }
+
+                    else -> {
+                        _downloadFlow.emit(item.id to DownloadStatus.Completed)
+                        true
+                    }
+                }
+                setPauseNotification(notificationBuilder, item, completed)
+                pause(item.id)
             }
-            else -> {
-                _downloadFlow.emit(item.id to DownloadStatus.Completed)
-                true
-            }
-        }
-        setPauseNotification(notificationBuilder, item, completed)
-        pause(item.id)
-    }
+        }}
 
     private suspend fun startConnection(
         item: DownloadItem,
@@ -334,9 +347,30 @@ class DownloadService : LifecycleService() {
     fun pause(id: Int) {
         downloadQueue[id] = false
 
-        // Stop the service if no downloads are active.
+        stopServiceIfDone()
+    }
+
+    /**
+     * Stop downloading job for given [id]. If no downloads are active, stop the service.
+     */
+    private fun stop(id: Int) = CoroutineScope(Dispatchers.IO).launch {
+        downloadQueue[id] = false
+        _downloadFlow.emit(id to DownloadStatus.Stopped)
+
+        lifecycleScope.launch {
+            val item = Database.downloadDao().findDownloadItemById(id)
+            notificationManager.cancel(item.getNotificationId())
+            Database.downloadDao().deleteDownloadItemById(id)
+            stopServiceIfDone()
+        }
+    }
+
+    /**
+     * Stop service if no downloads are active
+     */
+    private fun stopServiceIfDone() {
         if (downloadQueue.valueIterator().asSequence().none { it }) {
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
+            ServiceCompat.stopForeground(this@DownloadService, ServiceCompat.STOP_FOREGROUND_DETACH)
             sendBroadcast(Intent(ACTION_SERVICE_STOPPED))
             stopSelf()
         }
@@ -400,7 +434,7 @@ class DownloadService : LifecycleService() {
 
     private fun setResumeNotification(
         notificationBuilder: NotificationCompat.Builder,
-        item: DownloadItem,
+        item: DownloadItem
     ) {
         notificationBuilder
             .setSmallIcon(android.R.drawable.stat_sys_download)
@@ -408,6 +442,7 @@ class DownloadService : LifecycleService() {
             .setOngoing(true)
             .clearActions()
             .addAction(getPauseAction(item.id))
+            .addAction(getStopAction(item.id))
 
         notificationManager.notify(item.getNotificationId(), notificationBuilder.build())
     }
@@ -415,7 +450,7 @@ class DownloadService : LifecycleService() {
     private fun setPauseNotification(
         notificationBuilder: NotificationCompat.Builder,
         item: DownloadItem,
-        isCompleted: Boolean = false,
+        isCompleted: Boolean = false
     ) {
         notificationBuilder
             .setProgress(0, 0, false)
@@ -431,6 +466,7 @@ class DownloadService : LifecycleService() {
                 .setSmallIcon(R.drawable.ic_pause)
                 .setContentText(getString(R.string.download_paused))
                 .addAction(getResumeAction(item.id))
+                .addAction(getStopAction(item.id))
         }
         notificationManager.notify(item.getNotificationId(), notificationBuilder.build())
     }
@@ -443,7 +479,22 @@ class DownloadService : LifecycleService() {
         return NotificationCompat.Action.Builder(
             R.drawable.ic_play,
             getString(R.string.resume),
-            PendingIntentCompat.getBroadcast(this, id, intent, FLAG_UPDATE_CURRENT, false),
+            PendingIntentCompat.getBroadcast(this, id, intent, FLAG_UPDATE_CURRENT, false)
+        ).build()
+    }
+
+    private fun getStopAction(id: Int): NotificationCompat.Action {
+        val intent = Intent(this, NotificationReceiver::class.java).apply {
+            action = ACTION_DOWNLOAD_STOP
+            putExtra("id", id)
+        }
+
+        // the request code must differ from the one of the pause/resume action
+        val requestCode = Int.MAX_VALUE / 2 - id
+        return NotificationCompat.Action.Builder(
+            R.drawable.ic_stop,
+            getString(R.string.stop),
+            PendingIntentCompat.getBroadcast(this, requestCode, intent, FLAG_UPDATE_CURRENT, false)
         ).build()
     }
 
@@ -455,7 +506,7 @@ class DownloadService : LifecycleService() {
         return NotificationCompat.Action.Builder(
             R.drawable.ic_pause,
             getString(R.string.pause),
-            PendingIntentCompat.getBroadcast(this, id, intent, FLAG_UPDATE_CURRENT, false),
+            PendingIntentCompat.getBroadcast(this, id, intent, FLAG_UPDATE_CURRENT, false)
         ).build()
     }
 

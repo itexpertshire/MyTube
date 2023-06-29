@@ -12,17 +12,18 @@ import com.github.libretube.enums.ShareObjectType
 import com.github.libretube.helpers.DownloadHelper
 import com.github.libretube.helpers.NavigationHelper
 import com.github.libretube.obj.ShareData
+import com.github.libretube.parcelable.DownloadData
 import com.github.libretube.services.OfflinePlayerService
 import com.github.libretube.ui.dialogs.ShareDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlin.io.path.deleteIfExists
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-import kotlin.io.path.deleteIfExists
 
 class DownloadOptionsBottomSheet(
     private val download: Download,
     private val items: List<DownloadItem>,
-    private val onDelete: () -> Unit,
+    private val onDelete: () -> Unit
 ) : BaseBottomSheet() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val options = listOf(
@@ -40,14 +41,17 @@ class DownloadOptionsBottomSheet(
                     context?.stopService(playerIntent)
                     ContextCompat.startForegroundService(requireContext(), playerIntent)
                 }
+
                 1 -> {
                     NavigationHelper.navigateVideo(requireContext(), videoId = download.videoId)
                 }
+
                 2 -> {
                     val shareData = ShareData(currentVideo = download.uploader)
                     ShareDialog(download.videoId, ShareObjectType.VIDEO, shareData)
                         .show(parentFragmentManager, null)
                 }
+
                 3 -> {
                     MaterialAlertDialogBuilder(requireContext())
                         .setTitle(R.string.delete)
@@ -91,12 +95,12 @@ class DownloadOptionsBottomSheet(
 
                     DownloadHelper.startDownloadService(
                         requireContext(),
-                        vId,
+                        DownloadData(vId,
                         vFileName,
                         vFormat,
                         vQuality,
                         aFormat,
-                        aQuality,
+                        aQuality,"")
                     )
 
                 }

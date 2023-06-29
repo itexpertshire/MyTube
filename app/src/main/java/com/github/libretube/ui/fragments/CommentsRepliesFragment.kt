@@ -10,16 +10,19 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.github.libretube.R
 import com.github.libretube.api.RetrofitInstance
 import com.github.libretube.api.obj.Comment
 import com.github.libretube.api.obj.CommentsPage
 import com.github.libretube.constants.IntentData
 import com.github.libretube.databinding.FragmentCommentsBinding
 import com.github.libretube.extensions.TAG
+import com.github.libretube.extensions.formatShort
 import com.github.libretube.extensions.parcelable
 import com.github.libretube.ui.adapters.CommentsAdapter
 import com.github.libretube.ui.extensions.filterNonEmptyComments
 import com.github.libretube.ui.models.CommentsViewModel
+import com.github.libretube.ui.sheets.CommentsSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -37,7 +40,7 @@ class CommentsRepliesFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?,
+        savedInstanceState: Bundle?
     ): View {
         _binding = FragmentCommentsBinding.inflate(inflater, container, false)
         return binding.root
@@ -54,10 +57,14 @@ class CommentsRepliesFragment : Fragment() {
             videoId,
             mutableListOf(comment),
             true,
-            viewModel.handleLink,
+            viewModel.handleLink
         ) {
             viewModel.commentsSheetDismiss?.invoke()
         }
+        (parentFragment as CommentsSheet).updateFragmentInfo(
+            true,
+            "${getString(R.string.replies)} (${comment.replyCount.formatShort()})"
+        )
 
         binding.commentsRV.updatePadding(top = 0)
         binding.commentsRV.layoutManager = LinearLayoutManager(context)
@@ -85,7 +92,7 @@ class CommentsRepliesFragment : Fragment() {
     private fun loadInitialReplies(
         videoId: String,
         nextPage: String,
-        repliesAdapter: CommentsAdapter,
+        repliesAdapter: CommentsAdapter
     ) {
         binding.progress.visibility = View.VISIBLE
         fetchReplies(videoId, nextPage) {
@@ -97,7 +104,7 @@ class CommentsRepliesFragment : Fragment() {
     private fun fetchReplies(
         videoId: String,
         nextPage: String,
-        onFinished: (CommentsPage) -> Unit,
+        onFinished: (CommentsPage) -> Unit
     ) {
         lifecycleScope.launch(Dispatchers.IO) {
             if (isLoading) return@launch

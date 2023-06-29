@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.text.format.DateUtils
 import android.util.Base64
 import android.view.accessibility.CaptioningManager
@@ -16,6 +18,7 @@ import androidx.core.app.RemoteActionCompat
 import androidx.core.content.getSystemService
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.net.toUri
+import androidx.core.view.children
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackParameters
@@ -25,11 +28,13 @@ import androidx.media3.exoplayer.LoadControl
 import androidx.media3.ui.CaptionStyleCompat
 import com.github.libretube.R
 import com.github.libretube.api.obj.ChapterSegment
+import com.github.libretube.api.obj.PreviewFrames
 import com.github.libretube.api.obj.Segment
 import com.github.libretube.api.obj.Streams
 import com.github.libretube.constants.PreferenceKeys
 import com.github.libretube.enums.PlayerEvent
 import com.github.libretube.enums.SbSkipOptions
+import com.github.libretube.obj.PreviewFrame
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -37,7 +42,7 @@ import kotlin.math.roundToInt
 object PlayerHelper {
     private const val ACTION_MEDIA_CONTROL = "media_control"
     const val CONTROL_TYPE = "control_type"
-    private val SPONSOR_CATEGORIES: Array<String> =
+    private val SPONSOR_CATEGORIES =
         arrayOf(
             "intro",
             "selfpromo",
@@ -46,17 +51,16 @@ object PlayerHelper {
             "outro",
             "filler",
             "music_offtopic",
-            "preview")
+            "preview"
+        )
+    const val SPONSOR_HIGHLIGHT_CATEGORY = "poi_highlight"
 
     /**
      * Create a base64 encoded DASH stream manifest
      */
     fun createDashSource(streams: Streams, context: Context, audioOnly: Boolean = false): Uri {
-        val manifest = DashHelper.createManifest(
-            streams,
-            DisplayHelper.supportsHdr(context),
-            audioOnly
-        )
+        val supportsHdr = DisplayHelper.supportsHdr(context)
+        val manifest = DashHelper.createManifest(streams, supportsHdr, audioOnly)
 
         // encode to base64
         val encoded = Base64.encodeToString(manifest.toByteArray(), Base64.DEFAULT)
@@ -78,25 +82,10 @@ object PlayerHelper {
         }
     }
 
-    /**
-     * get the categories for sponsorBlock
-     */
-    fun getSponsorBlockCategories(): MutableMap<String, SbSkipOptions> {
-        val categories: MutableMap<String, SbSkipOptions> = mutableMapOf()
-
-        for (category in SPONSOR_CATEGORIES){
-            val state = PreferenceHelper.getString(category + "_category", "off").uppercase()
-            if (SbSkipOptions.valueOf(state) != SbSkipOptions.OFF){
-                categories[category] = SbSkipOptions.valueOf(state)
-            }
-        }
-        return categories
-    }
-
     fun getOrientation(videoWidth: Int, videoHeight: Int): Int {
         val fullscreenOrientationPref = PreferenceHelper.getString(
             PreferenceKeys.FULLSCREEN_ORIENTATION,
-            "ratio",
+            "ratio"
         )
 
         return when (fullscreenOrientationPref) {
@@ -109,6 +98,7 @@ object PlayerHelper {
                     ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                 }
             }
+
             "auto" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
             "landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             "portrait" -> ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
@@ -119,25 +109,25 @@ object PlayerHelper {
     val autoRotationEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.AUTO_FULLSCREEN,
-            false,
+            false
         )
 
     val relatedStreamsEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.RELATED_STREAMS,
-            true,
+            true
         )
 
     val pausePlayerOnScreenOffEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.PAUSE_ON_SCREEN_OFF,
-            false,
+            false
         )
 
     private val watchPositionsPref: String
         get() = PreferenceHelper.getString(
             PreferenceKeys.WATCH_POSITIONS,
-            "always",
+            "always"
         )
 
     val watchPositionsVideo: Boolean
@@ -149,38 +139,44 @@ object PlayerHelper {
     val watchHistoryEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.WATCH_HISTORY_TOGGLE,
-            true,
+            true
         )
 
     val useSystemCaptionStyle: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.SYSTEM_CAPTION_STYLE,
-            true,
+            true
         )
 
     private val bufferingGoal: Int
         get() = PreferenceHelper.getString(
             PreferenceKeys.BUFFERING_GOAL,
-            "50",
+            "50"
         ).toInt() * 1000
 
     val sponsorBlockEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
             "sb_enabled_key",
-            true,
+            true
         )
 
     private val sponsorBlockNotifications: Boolean
         get() = PreferenceHelper.getBoolean(
             "sb_notifications_key",
-            true,
+            true
+        )
+
+    private val sponsorBlockHighlights: Boolean
+        get() = PreferenceHelper.getBoolean(
+            PreferenceKeys.SB_HIGHLIGHTS,
+            true
         )
 
     val defaultSubtitleCode: String?
         get() {
             val code = PreferenceHelper.getString(
                 PreferenceKeys.DEFAULT_SUBTITLE,
-                "",
+                ""
             )
 
             if (code == "") return null
@@ -194,117 +190,122 @@ object PlayerHelper {
     val skipButtonsEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.SKIP_BUTTONS,
-            false,
+            false
         )
 
     val pipEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.PICTURE_IN_PICTURE,
-            true,
+            true
         )
 
-    val autoPlayEnabled: Boolean
+    var autoPlayEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
-            PreferenceKeys.AUTO_PLAY,
-            true,
+            PreferenceKeys.AUTOPLAY,
+            true
         )
+        set(value) {
+            PreferenceHelper.putBoolean(PreferenceKeys.AUTOPLAY, value)
+        }
 
     val autoPlayCountdown: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.AUTOPLAY_COUNTDOWN,
-            false,
+            false
         )
 
     val seekIncrement: Long
         get() = PreferenceHelper.getString(
             PreferenceKeys.SEEK_INCREMENT,
-            "10.0",
+            "10.0"
         ).toFloat()
             .roundToInt()
             .toLong() * 1000
 
-    private val playbackSpeed: Float
+    val playbackSpeed: Float
         get() = PreferenceHelper.getString(
             PreferenceKeys.PLAYBACK_SPEED,
-            "1",
+            "1"
         ).replace("F", "").toFloat()
 
     private val backgroundSpeed: Float
         get() = when (PreferenceHelper.getBoolean(PreferenceKeys.CUSTOM_PLAYBACK_SPEED, false)) {
-            true -> PreferenceHelper.getString(PreferenceKeys.BACKGROUND_PLAYBACK_SPEED, "1").toFloat()
+            true -> PreferenceHelper.getString(PreferenceKeys.BACKGROUND_PLAYBACK_SPEED, "1")
+                .toFloat()
+
             else -> playbackSpeed
         }
 
     val resizeModePref: String
         get() = PreferenceHelper.getString(
             PreferenceKeys.PLAYER_RESIZE_MODE,
-            "fit",
+            "fit"
         )
 
     val alternativeVideoLayout: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.ALTERNATIVE_PLAYER_LAYOUT,
-            false,
+            false
         )
 
     val autoInsertRelatedVideos: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.QUEUE_AUTO_INSERT_RELATED,
-            true,
+            true
         )
 
     val swipeGestureEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.PLAYER_SWIPE_CONTROLS,
-            true,
+            true
         )
 
     val fullscreenGesturesEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.FULLSCREEN_GESTURES,
-            false,
+            false
         )
 
     val pinchGestureEnabled: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.PLAYER_PINCH_CONTROL,
-            true,
+            true
         )
 
     val captionsTextSize: Float
         get() = PreferenceHelper.getString(
             PreferenceKeys.CAPTIONS_SIZE,
-            "18",
+            "18"
         ).toFloat()
 
     val doubleTapToSeek: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.DOUBLE_TAP_TO_SEEK,
-            true,
+            true
         )
 
     val pauseOnQuit: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.PAUSE_ON_QUIT,
-            false,
+            false
         )
 
     private val alternativePiPControls: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.ALTERNATIVE_PIP_CONTROLS,
-            false,
+            false
         )
 
     private val skipSilence: Boolean
         get() = PreferenceHelper.getBoolean(
             PreferenceKeys.SKIP_SILENCE,
-            false,
+            false
         )
 
     val enabledVideoCodecs: String
         get() = PreferenceHelper.getString(
             PreferenceKeys.ENABLED_VIDEO_CODECS,
-            "all",
+            "all"
         )
 
     fun getDefaultResolution(context: Context): String {
@@ -329,14 +330,14 @@ object PlayerHelper {
         activity: Activity,
         id: Int,
         @StringRes title: Int,
-        event: PlayerEvent,
+        event: PlayerEvent
     ): RemoteActionCompat {
         val text = activity.getString(title)
         return RemoteActionCompat(
             IconCompat.createWithResource(activity, id),
             text,
             text,
-            getPendingIntent(activity, event.value),
+            getPendingIntent(activity, event.value)
         )
     }
 
@@ -348,35 +349,35 @@ object PlayerHelper {
             activity,
             R.drawable.ic_headphones,
             R.string.background_mode,
-            PlayerEvent.Background,
+            PlayerEvent.Background
         )
 
         val rewindAction = getRemoteAction(
             activity,
             R.drawable.ic_rewind,
             R.string.rewind,
-            PlayerEvent.Rewind,
+            PlayerEvent.Rewind
         )
 
         val playPauseAction = getRemoteAction(
             activity,
             if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play,
             R.string.pause,
-            if (isPlaying) PlayerEvent.Pause else PlayerEvent.Play,
+            if (isPlaying) PlayerEvent.Pause else PlayerEvent.Play
         )
 
         val skipNextAction = getRemoteAction(
             activity,
             R.drawable.ic_next,
             R.string.play_next,
-            PlayerEvent.Next,
+            PlayerEvent.Next
         )
 
         val forwardAction = getRemoteAction(
             activity,
             R.drawable.ic_forward,
             R.string.forward,
-            PlayerEvent.Forward,
+            PlayerEvent.Forward
         )
         return if (alternativePiPControls) {
             listOf(audioModeAction, playPauseAction, skipNextAction)
@@ -407,7 +408,7 @@ object PlayerHelper {
                 1000 * 10, // exo default is 50s
                 bufferingGoal,
                 DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
             )
             .build()
     }
@@ -424,18 +425,56 @@ object PlayerHelper {
     }
 
     /**
+     * Get the preview frame according to the current position
+     */
+    fun getPreviewFrame(previewFrames: List<PreviewFrames>, position: Long): PreviewFrame? {
+        var startPosition: Long = 0
+        // get the frames with the best quality
+        val frames = previewFrames.maxByOrNull { it.frameHeight }
+        frames?.urls?.forEach { url ->
+            // iterate over all available positions and find the one matching the current position
+            for (y in 0 until frames.framesPerPageY) {
+                for (x in 0 until frames.framesPerPageX) {
+                    val endPosition = startPosition + frames.durationPerFrame
+                    if (position in startPosition until endPosition) {
+                        return PreviewFrame(url, x, y, frames.frameWidth, frames.frameHeight)
+                    }
+                    startPosition = endPosition
+                }
+            }
+        }
+        return null
+    }
+
+    /**
+     * get the categories for sponsorBlock
+     */
+    fun getSponsorBlockCategories(): MutableMap<String, SbSkipOptions> {
+        val categories: MutableMap<String, SbSkipOptions> = mutableMapOf()
+
+        for (category in SPONSOR_CATEGORIES) {
+            val state = PreferenceHelper.getString(category + "_category", "off").uppercase()
+            if (SbSkipOptions.valueOf(state) != SbSkipOptions.OFF) {
+                categories[category] = SbSkipOptions.valueOf(state)
+            }
+        }
+        // Add the highlights category to display in the chapters
+        if (sponsorBlockHighlights) categories[SPONSOR_HIGHLIGHT_CATEGORY] = SbSkipOptions.OFF
+        return categories
+    }
+
+    /**
      * Check for SponsorBlock segments matching the current player position
      * @param context A main dispatcher context
      * @param segments List of the SponsorBlock segments
-     * @param skipManually Whether the event gets handled by the function caller
-     * @return If segment found and [skipManually] is true, the end position of the segment in ms, otherwise null
+     * @return If segment found and should skip manually, the end position of the segment in ms, otherwise null
      */
     fun ExoPlayer.checkForSegments(
         context: Context,
         segments: List<Segment>,
-        sponsorBlockConfig: MutableMap<String, SbSkipOptions>,
+        sponsorBlockConfig: MutableMap<String, SbSkipOptions>
     ): Long? {
-        for (segment in segments) {
+        for (segment in segments.filter { it.category != SPONSOR_HIGHLIGHT_CATEGORY }) {
             val segmentStart = (segment.segment[0] * 1000f).toLong()
             val segmentEnd = (segment.segment[1] * 1000f).toLong()
 
@@ -465,9 +504,17 @@ object PlayerHelper {
         for (segment in segments) {
             val segmentStart = (segment.segment[0] * 1000f).toLong()
             val segmentEnd = (segment.segment[1] * 1000f).toLong()
-            if (currentPosition in segmentStart..segmentEnd) { return true }
+            if (currentPosition in segmentStart..segmentEnd) return true
         }
         return false
+    }
+
+    /**
+     * Get the name of the currently played chapter
+     */
+    fun getCurrentChapterIndex(exoPlayer: ExoPlayer, chapters: List<ChapterSegment>): Int? {
+        val currentPosition = exoPlayer.currentPosition / 1000
+        return chapters.indexOfLast { currentPosition >= it.start }.takeIf { it >= 0 }
     }
 
     /**
@@ -477,11 +524,31 @@ object PlayerHelper {
         val titles = chapters.map { chapter ->
             "(${DateUtils.formatElapsedTime(chapter.start)}) ${chapter.title}"
         }
-        MaterialAlertDialogBuilder(context)
+        val dialog = MaterialAlertDialogBuilder(context)
             .setTitle(R.string.chapters)
             .setItems(titles.toTypedArray()) { _, index ->
                 player.seekTo(chapters[index].start * 1000)
             }
-            .show()
+            .create()
+        val handler = Handler(Looper.getMainLooper())
+
+        val updatePosition = Runnable {
+            // scroll to the current playing index in the chapter
+            val currentPosition =
+                getCurrentChapterIndex(player, chapters) ?: return@Runnable
+            dialog.listView.smoothScrollToPosition(currentPosition)
+            val current = dialog.listView.children.toList()[currentPosition]
+            val highlightColor =
+                ThemeHelper.getThemeColor(context, android.R.attr.colorControlHighlight)
+            current.setBackgroundColor(highlightColor)
+        }
+
+        dialog.setOnShowListener {
+            updatePosition.run()
+            // update the position after a short delay
+            if (dialog.isShowing) handler.postDelayed(updatePosition, 200)
+        }
+
+        dialog.show()
     }
 }

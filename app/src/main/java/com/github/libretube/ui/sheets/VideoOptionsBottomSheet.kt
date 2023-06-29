@@ -60,16 +60,18 @@ class VideoOptionsBottomSheet(
 
         // show the mark as watched or unwatched option if watch positions are enabled
         if (PlayerHelper.watchPositionsVideo || PlayerHelper.watchHistoryEnabled) {
+            optionsList += getString(R.string.mark_as_watched)
             val watchPositionEntry = runBlocking(Dispatchers.IO) {
                 DatabaseHolder.Database.watchPositionDao().findById(videoId)
             }
             val watchHistoryEntry = runBlocking(Dispatchers.IO) {
                 DatabaseHolder.Database.watchHistoryDao().findById(videoId)
             }
-            optionsList += if (watchHistoryEntry != null || watchPositionEntry != null) {
-                getString(R.string.mark_as_unwatched)
-            } else getString(R.string.mark_as_watched)
 
+            if (watchHistoryEntry != null || watchPositionEntry != null) {
+                optionsList += getString(R.string.mark_as_unwatched)
+            }
+        }
 
         setSimpleItems(optionsList) { which ->
             when (optionsList[which]) {
@@ -114,6 +116,7 @@ class VideoOptionsBottomSheet(
                         e.printStackTrace()
                     }
                 }
+
                 getString(R.string.mark_as_watched) -> {
                     val watchPosition = WatchPosition(videoId, Long.MAX_VALUE)
                     withContext(Dispatchers.IO) {
@@ -126,16 +129,15 @@ class VideoOptionsBottomSheet(
                     }
                     if (PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false)) {
                         // get the host fragment containing the current fragment
-                        val navHostFragment =
-                            (context as MainActivity).supportFragmentManager
-                                .findFragmentById(R.id.fragment) as NavHostFragment?
+                        val navHostFragment = (context as MainActivity).supportFragmentManager
+                            .findFragmentById(R.id.fragment) as NavHostFragment?
                         // get the current fragment
-                        val fragment = navHostFragment?.childFragmentManager?.fragments?.firstOrNull()
-                        (fragment as? SubscriptionsFragment)?.subscriptionsAdapter?.removeItemById(
-                            videoId,
-                        )
+                        val fragment = navHostFragment?.childFragmentManager?.fragments
+                            ?.firstOrNull() as? SubscriptionsFragment
+                        fragment?.subscriptionsAdapter?.removeItemById(videoId)
                     }
                 }
+
                 //Not Interested
                 getString(R.string.not_interested) -> {
                     val watchPosition = WatchPosition(videoId, Long.MAX_VALUE)

@@ -52,7 +52,7 @@ class OfflinePlayerActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowHelper.toggleFullscreen(this, true)
 
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         super.onCreate(savedInstanceState)
 
@@ -62,12 +62,16 @@ class OfflinePlayerActivity : BaseActivity() {
         setContentView(binding.root)
 
         initializePlayer()
-        playVideo()
+        playVideoAll()
 
         requestedOrientation = PlayerHelper.getOrientation(
             player.videoSize.width,
             player.videoSize.height,
         )
+
+
+
+
     }
 
     private fun initializePlayer() {
@@ -108,6 +112,60 @@ class OfflinePlayerActivity : BaseActivity() {
             binding.doubleTapOverlay.binding,
             binding.playerGestureControlsView.binding,
         )
+    }
+
+    private fun playVideoAll() {
+        lifecycleScope.launch {
+            val downloadInfo = withContext(Dispatchers.IO) {
+                Database.downloadDao().findById(videoId)
+            }
+            val downloadFiles = downloadInfo.downloadItems
+            playerBinding.exoTitle.text = downloadInfo.download.title
+            playerBinding.exoTitle.isVisible = true
+
+            val video = downloadFiles.firstOrNull { it.type == FileType.VIDEO }
+            val audio = downloadFiles.firstOrNull { it.type == FileType.AUDIO }
+            val subtitle = downloadFiles.firstOrNull { it.type == FileType.SUBTITLE }
+
+            val videoUri = video?.path?.toAndroidUri()
+            val audioUri = audio?.path?.toAndroidUri()
+            val subtitleUri = subtitle?.path?.toAndroidUri()
+
+            setMediaSource(videoUri, audioUri, subtitleUri)
+
+            //Add remaining downloaded items in the queue
+
+            val downloadInfoList = withContext(Dispatchers.IO) {
+                Database.downloadDao().getAll()
+            }
+
+            downloadInfoList.forEach { it->
+                val downloadFiles = it.downloadItems
+                if ((downloadFiles.firstOrNull()?.videoId ?: "") != videoId) {
+
+                    playerBinding.exoTitle.text = downloadInfo.download.title
+                    playerBinding.exoTitle.isVisible = true
+
+                    val video = downloadFiles.firstOrNull { it.type == FileType.VIDEO }
+                    val audio = downloadFiles.firstOrNull { it.type == FileType.AUDIO }
+                    val subtitle = downloadFiles.firstOrNull { it.type == FileType.SUBTITLE }
+
+                    val videoUri = video?.path?.toAndroidUri()
+                    val audioUri = audio?.path?.toAndroidUri()
+                    val subtitleUri = subtitle?.path?.toAndroidUri()
+
+                    setMediaSource(videoUri, audioUri, subtitleUri)
+                }
+            }
+
+            trackSelector.updateParameters {
+                setPreferredTextRoleFlags(C.ROLE_FLAG_CAPTION)
+                setPreferredTextLanguage("en")
+            }
+
+            player.prepare()
+            player.play()
+        }
     }
 
     private fun playVideo() {

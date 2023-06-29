@@ -145,7 +145,7 @@ object DatabaseHelper {
         streamItem.forEach { it ->
             //get the video id
             val videoId = it.url.replace("/watch?v=","")
-            val watchHist = Database.watchHistoryDao().getVideo(videoId)
+            val watchHist = Database.watchHistoryDao().findById(videoId)
             watchHist ?: run {
                 Log.d("Amit","addRecommendation - watchHist is null")
                 Database.recommendStreamItemDao().insert(it)

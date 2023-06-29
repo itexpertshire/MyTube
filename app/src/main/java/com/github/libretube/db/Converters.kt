@@ -2,13 +2,12 @@ package com.github.libretube.db
 
 import androidx.room.TypeConverter
 import com.github.libretube.api.JsonHelper
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.toLocalDate
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import java.sql.Date
 import java.nio.file.Path
 import java.nio.file.Paths
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toLocalDate
+import kotlinx.serialization.encodeToString
+import java.sql.Date
 
 object Converters {
     @TypeConverter

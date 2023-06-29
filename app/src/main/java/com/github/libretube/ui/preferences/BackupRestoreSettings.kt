@@ -15,43 +15,48 @@ import com.github.libretube.ui.base.BasePreferenceFragment
 import com.github.libretube.ui.dialogs.BackupDialog
 import com.github.libretube.ui.dialogs.RequireRestartDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.withContext
 
 class BackupRestoreSettings : BasePreferenceFragment() {
     private val backupDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss")
     private var backupFile = BackupFile()
     private var importFormat: ImportFormat = ImportFormat.NEWPIPE
-    private val importSubscriptionFormatList get() = listOf(
-        ImportFormat.NEWPIPE,
-        ImportFormat.FREETUBE,
-        ImportFormat.YOUTUBECSV
-    )
-    private val exportSubscriptionFormatList get() = listOf(
-        ImportFormat.NEWPIPE,
-        ImportFormat.FREETUBE
-    )
-    private val importPlaylistFormatList get() = listOf(
-        ImportFormat.PIPED,
-        ImportFormat.FREETUBE,
-        ImportFormat.YOUTUBECSV
-    )
-    private val exportPlaylistFormatList get() = listOf(
-        ImportFormat.PIPED,
-        ImportFormat.FREETUBE
-    )
+    private val importSubscriptionFormatList
+        get() = listOf(
+            ImportFormat.NEWPIPE,
+            ImportFormat.FREETUBE,
+            ImportFormat.YOUTUBECSV
+        )
+    private val exportSubscriptionFormatList
+        get() = listOf(
+            ImportFormat.NEWPIPE,
+            ImportFormat.FREETUBE
+        )
+    private val importPlaylistFormatList
+        get() = listOf(
+            ImportFormat.PIPED,
+            ImportFormat.FREETUBE,
+            ImportFormat.YOUTUBECSV
+        )
+    private val exportPlaylistFormatList
+        get() = listOf(
+            ImportFormat.PIPED,
+            ImportFormat.FREETUBE
+        )
 
     override val titleResourceId: Int = R.string.backup_restore
 
     // backup and restore database
-    private val getBackupFile = registerForActivityResult(ActivityResultContracts.GetContent()) {
-        it?.let {
+    private val getBackupFile =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri == null) return@registerForActivityResult
             CoroutineScope(Dispatchers.IO).launch {
-                BackupHelper.restoreAdvancedBackup(requireContext(), it)
+                BackupHelper.restoreAdvancedBackup(requireContext(), uri)
                 withContext(Dispatchers.Main) {
                     // could fail if fragment is already closed
                     runCatching {
@@ -60,12 +65,10 @@ class BackupRestoreSettings : BasePreferenceFragment() {
                 }
             }
         }
-    }
-    private val createBackupFile = registerForActivityResult(CreateDocument(JSON)) {
-        it?.let {
-            CoroutineScope(Dispatchers.IO).launch {
-                BackupHelper.createAdvancedBackup(requireContext(), it, backupFile)
-            }
+    private val createBackupFile = registerForActivityResult(CreateDocument(JSON)) { uri ->
+        if (uri == null) return@registerForActivityResult
+        CoroutineScope(Dispatchers.IO).launch {
+            BackupHelper.createAdvancedBackup(requireContext(), uri, backupFile)
         }
     }
 
@@ -73,20 +76,18 @@ class BackupRestoreSettings : BasePreferenceFragment() {
      * result listeners for importing and exporting subscriptions
      */
     private val getSubscriptionsFile = registerForActivityResult(
-        ActivityResultContracts.GetContent(),
-    ) {
-        it?.let {
-            lifecycleScope.launch(Dispatchers.IO) {
-                ImportHelper.importSubscriptions(requireActivity(), it, importFormat)
-            }
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch(Dispatchers.IO) {
+            ImportHelper.importSubscriptions(requireActivity(), uri, importFormat)
         }
     }
 
-    private val createSubscriptionsFile = registerForActivityResult(CreateDocument(JSON)) {
-        it?.let {
-            lifecycleScope.launch(Dispatchers.IO) {
-                ImportHelper.exportSubscriptions(requireActivity(), it, importFormat)
-            }
+    private val createSubscriptionsFile = registerForActivityResult(CreateDocument(JSON)) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch(Dispatchers.IO) {
+            ImportHelper.exportSubscriptions(requireActivity(), uri, importFormat)
         }
     }
 
@@ -145,7 +146,9 @@ class BackupRestoreSettings : BasePreferenceFragment() {
             val list = exportSubscriptionFormatList.map { getString(it.value) }
             createImportFormatDialog(R.string.export_subscriptions_to, list) {
                 importFormat = exportSubscriptionFormatList[it]
-                createSubscriptionsFile.launch("${getString(importFormat.value).lowercase()}-subscriptions.json")
+                createSubscriptionsFile.launch(
+                    "${getString(importFormat.value).lowercase()}-subscriptions.json"
+                )
             }
             true
         }
@@ -165,7 +168,9 @@ class BackupRestoreSettings : BasePreferenceFragment() {
             val list = exportPlaylistFormatList.map { getString(it.value) }
             createImportFormatDialog(R.string.export_playlists_to, list) {
                 importFormat = exportPlaylistFormatList[it]
-                createPlaylistsFile.launch("${getString(importFormat.value).lowercase()}-playlists.json")
+                createPlaylistsFile.launch(
+                    "${getString(importFormat.value).lowercase()}-playlists.json"
+                )
             }
             true
         }
@@ -189,6 +194,6 @@ class BackupRestoreSettings : BasePreferenceFragment() {
     }
 
     companion object {
-        private const val JSON = "application/json"
+        const val JSON = "application/json"
     }
 }

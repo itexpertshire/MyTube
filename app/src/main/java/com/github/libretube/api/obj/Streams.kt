@@ -3,9 +3,10 @@ package com.github.libretube.api.obj
 import com.github.libretube.db.obj.DownloadItem
 import com.github.libretube.enums.FileType
 import com.github.libretube.helpers.ProxyHelper
+import com.github.libretube.parcelable.DownloadData
+import java.nio.file.Paths
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
-import java.nio.file.Paths
 
 @Serializable
 data class Streams(
@@ -33,44 +34,37 @@ data class Streams(
     val proxyUrl: String? = null,
     val chapters: List<ChapterSegment> = emptyList(),
     val uploaderSubscriberCount: Long = 0,
-    val previewFrames: List<PreviewFrames> = emptyList(),
+    val previewFrames: List<PreviewFrames> = emptyList()
 ) {
-    fun toDownloadItems(
-        videoId: String,
-        fileName: String,
-        videoFormat: String?,
-        videoQuality: String?,
-        audioFormat: String?,
-        audioQuality: String?,
-        subtitleCode: String?,
-    ): List<DownloadItem> {
+    fun toDownloadItems(downloadData: DownloadData): List<DownloadItem> {
+        val (id, name, videoFormat, videoQuality, audioFormat, audioQuality, subCode) = downloadData
         val items = mutableListOf<DownloadItem>()
 
         if (!videoQuality.isNullOrEmpty() && !videoFormat.isNullOrEmpty()) {
             val stream = videoStreams.find {
                 it.quality == videoQuality && it.format == videoFormat
             }
-            stream?.toDownloadItem(FileType.VIDEO, videoId, fileName)?.let { items.add(it) }
+            stream?.toDownloadItem(FileType.VIDEO, id, name)?.let { items.add(it) }
         }
 
         if (!audioQuality.isNullOrEmpty() && !audioFormat.isNullOrEmpty()) {
             val stream = audioStreams.find {
                 it.quality == audioQuality && it.format == audioFormat
             }
-            stream?.toDownloadItem(FileType.AUDIO, videoId, fileName)?.let { items.add(it) }
+            stream?.toDownloadItem(FileType.AUDIO, id, name)?.let { items.add(it) }
         }
 
-        if (!subtitleCode.isNullOrEmpty()) {
+        if (!subCode.isNullOrEmpty()) {
             items.add(
                 DownloadItem(
                     type = FileType.SUBTITLE,
-                    videoId = videoId,
-                    fileName = "${fileName}_$subtitleCode.srt",
+                    videoId = id,
+                    fileName = "${name}_$subCode.srt",
                     path = Paths.get(""),
                     url = subtitles.find {
-                        it.code == subtitleCode
-                    }?.url?.let { ProxyHelper.unwrapIfEnabled(it) },
-                ),
+                        it.code == subCode
+                    }?.url?.let { ProxyHelper.unwrapIfEnabled(it) }
+                )
             )
         }
 
@@ -90,7 +84,7 @@ data class Streams(
             duration = duration,
             views = views,
             uploaderVerified = uploaderVerified,
-            shortDescription = description,
+            shortDescription = description
         )
     }
 }

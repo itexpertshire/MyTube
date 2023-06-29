@@ -7,6 +7,7 @@ import android.view.View
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.media3.exoplayer.trackselection.TrackSelector
+import androidx.media3.ui.PlayerView.ControllerVisibilityListener
 import com.github.libretube.R
 import com.github.libretube.helpers.PlayerHelper
 import com.github.libretube.helpers.WindowHelper
@@ -17,13 +18,12 @@ import com.github.libretube.ui.models.PlayerViewModel
 
 class OnlinePlayerView(
     context: Context,
-    attributeSet: AttributeSet? = null,
+    attributeSet: AttributeSet? = null
 ) : CustomExoPlayerView(context, attributeSet) {
     private var playerOptions: OnlinePlayerOptions? = null
     private var playerViewModel: PlayerViewModel? = null
     private var trackSelector: TrackSelector? = null
     private var viewLifecycleOwner: LifecycleOwner? = null
-    var autoplayEnabled = PlayerHelper.autoPlayEnabled
 
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun getOptionsMenuItems(): List<BottomSheetItem> {
@@ -32,7 +32,7 @@ class OnlinePlayerView(
                     BottomSheetItem(
                         context.getString(R.string.quality),
                         R.drawable.ic_hd,
-                        { "${player?.videoSize?.height}p" },
+                        { "${player?.videoSize?.height}p" }
                     ) {
                         playerOptions?.onQualityClicked()
                     },
@@ -41,7 +41,7 @@ class OnlinePlayerView(
                         R.drawable.ic_audio,
                         {
                             trackSelector?.parameters?.preferredAudioLanguages?.firstOrNull()
-                        },
+                        }
                     ) {
                         playerOptions?.onAudioStreamClicked()
                     },
@@ -54,18 +54,17 @@ class OnlinePlayerView(
                             } else {
                                 context.getString(R.string.none)
                             }
-                        },
+                        }
                     ) {
                         playerOptions?.onCaptionsClicked()
                     },
                     BottomSheetItem(
                         context.getString(R.string.stats_for_nerds),
-                        R.drawable.ic_info,
+                        R.drawable.ic_info
                     ) {
                         playerOptions?.onStatsClicked()
-                    },
+                    }
                 )
-
     }
 
     fun initPlayerOptions(
@@ -91,16 +90,16 @@ class OnlinePlayerView(
                     // Show status bar only not navigation bar if the player controls are visible and hide it otherwise
                     activity.toggleSystemBars(
                         types = WindowInsetsCompat.Type.statusBars(),
-                        showBars = visibility == View.VISIBLE,
+                        showBars = visibility == View.VISIBLE
                     )
                 }
-            },
+            }
         )
 
-        binding.autoPlay.isChecked = autoplayEnabled
+        binding.autoPlay.isChecked = PlayerHelper.autoPlayEnabled
 
         binding.autoPlay.setOnCheckedChangeListener { _, isChecked ->
-            autoplayEnabled = isChecked
+            PlayerHelper.autoPlayEnabled = isChecked
         }
     }
 
