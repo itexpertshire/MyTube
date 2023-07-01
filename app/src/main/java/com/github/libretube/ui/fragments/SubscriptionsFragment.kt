@@ -252,7 +252,7 @@ class SubscriptionsFragment : Fragment() {
         subscriptionsAdapter = VideosAdapter(
             sortedFeed.toMutableList(),
             showAllAtOnce = false,
-            hideWatched = PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false)
+           // hideWatched = PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false)
         )
         binding.subFeed.adapter = subscriptionsAdapter
 

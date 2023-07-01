@@ -1,8 +1,10 @@
 package com.github.libretube.ui.fragments
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
@@ -112,9 +114,6 @@ import com.github.libretube.util.NowPlayingNotification
 import com.github.libretube.util.PlayingQueue
 import com.github.libretube.util.TextUtils
 import com.github.libretube.util.TextUtils.toTimeInSeconds
-import java.io.IOException
-import java.util.*
-import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -122,7 +121,11 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import retrofit2.HttpException
+import java.io.IOException
+import java.util.*
+import java.util.concurrent.Executors
 import kotlin.math.abs
+
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerFragment : Fragment(), OnlinePlayerOptions {
@@ -992,6 +995,41 @@ class PlayerFragment : Fragment(), OnlinePlayerOptions {
             } else {
                 Toast.makeText(context, R.string.dlisinprogress, Toast.LENGTH_SHORT)
                     .show()
+
+               /* AlertDialog.Builder(context)
+                    .setTitle("Download is in progress")
+                    .setMessage("Are you sure you want to cancel current download?") // Specifying a listener allows you to take an action before dismissing the dialog.
+                    // The dialog is automatically dismissed when a dialog button is clicked.
+                    .setPositiveButton(android.R.string.yes,
+                        DialogInterface.OnClickListener { dialog, which ->
+                            run { DownloadService.IS_DOWNLOAD_RUNNING = false }
+                        }) // A null listener allows the button to dismiss the dialog and take no further action.
+                    .setNegativeButton(android.R.string.no, null)
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .show()
+                */
+
+                val alertDialog: AlertDialog? = activity?.let {
+                    val builder = AlertDialog.Builder(it)
+                    builder.apply {
+                        setPositiveButton(R.string.yes,
+                            DialogInterface.OnClickListener { dialog, id ->
+                                run { DownloadService.IS_DOWNLOAD_RUNNING = false }
+                            })
+                        setNegativeButton(R.string.cancel,
+                            DialogInterface.OnClickListener { dialog, id ->
+                                // User cancelled the dialog
+                            })
+                    }
+                    // Set other dialog properties
+                    builder.setTitle("Download is in progress")
+                           .setMessage("Are you sure you want to cancel current download?") // Specifying a listener allows you to take an action before dismissing the dialog.
+                          .setIcon(android.R.drawable.ic_dialog_alert)
+                          .show()
+
+
+                }
+
             }
         }
 

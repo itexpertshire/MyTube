@@ -3,6 +3,7 @@ package com.github.libretube.helpers
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Environment
 import androidx.core.content.ContextCompat
 import com.github.libretube.constants.IntentData
 import com.github.libretube.constants.PreferenceKeys
@@ -19,16 +20,18 @@ object DownloadHelper {
     const val THUMBNAIL_DIR = "thumbnail"
     const val DOWNLOAD_CHUNK_SIZE = 8L * 1024
     const val DEFAULT_TIMEOUT = 60 * 1000
-    const val DEFAULT_RETRY = 5
+    const val DEFAULT_RETRY = 20
 
     private fun getOfflineStorageDir(context: Context): Path {
         val file = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             context.filesDir
         } else {
             try {
-                context.getExternalFilesDir(null)!!
+                //context.getExternalFilesDir(null)!!
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
             } catch (e: Exception) {
                 context.filesDir
+
             }
         }
         return file.toPath()

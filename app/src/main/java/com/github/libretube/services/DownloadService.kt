@@ -4,10 +4,17 @@ import android.app.NotificationManager
 import android.app.PendingIntent.FLAG_CANCEL_CURRENT
 import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.Intent
+import android.media.MediaCodec
+import android.media.MediaExtractor
+import android.media.MediaFormat
+import android.media.MediaMuxer
 import android.os.Binder
+import android.os.Build
+import android.os.Environment
 import android.os.IBinder
 import android.util.Log
 import android.util.SparseBooleanArray
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.PendingIntentCompat
 import androidx.core.app.ServiceCompat
@@ -41,13 +48,6 @@ import com.github.libretube.receivers.NotificationReceiver.Companion.ACTION_DOWN
 import com.github.libretube.receivers.NotificationReceiver.Companion.ACTION_DOWNLOAD_RESUME
 import com.github.libretube.receivers.NotificationReceiver.Companion.ACTION_DOWNLOAD_STOP
 import com.github.libretube.ui.activities.MainActivity
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.SocketTimeoutException
-import java.net.URL
-import java.nio.file.Path
-import java.nio.file.StandardOpenOption
-import java.util.concurrent.Executors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,11 +62,21 @@ import kotlinx.coroutines.withContext
 import okio.buffer
 import okio.sink
 import okio.source
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
+import java.net.URL
+import java.nio.ByteBuffer
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
+import java.util.concurrent.Executors
 import kotlin.io.path.absolute
 import kotlin.io.path.createFile
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.fileSize
 import kotlin.math.min
+
 
 /**
  * Download service with custom implementation of downloading using [HttpURLConnection].
@@ -170,103 +180,313 @@ class DownloadService : LifecycleService() {
         // only fetch the content length if it's not been returned by the API
         if (item.downloadSize == 0L) {
             url.getContentLength()?.let { size ->
-                Log.d("Amit", "url-${url}")
-                url.getContentLength().let { size ->
-                    if (size != null) {
-                        if (size > 0 && size != item.downloadSize) {
-                            item.downloadSize = size
-                            Database.downloadDao().updateDownloadItem(item)
-                        }
-                    }
-                }
-
-                while (totalRead < item.downloadSize) {
-                    try {
-                        val con = startConnection(item, url, totalRead, item.downloadSize) ?: return
-
-                        @Suppress("NewApi") // The StandardOpenOption enum is desugared.
-                        val sink = path.sink(StandardOpenOption.APPEND).buffer()
-                        val sourceByte = con.inputStream.source()
-
-                        var lastTime = System.currentTimeMillis() / 1000
-                        var lastRead: Long = 0
-
-                        try {
-                            // Check if downloading is still active and read next bytes.
-                            while (downloadQueue[item.id] && sourceByte
-                                    .read(sink.buffer, DownloadHelper.DOWNLOAD_CHUNK_SIZE)
-                                    .also { lastRead = it } != -1L
-                            ) {
-                                sink.emit()
-                                totalRead += lastRead
-                                _downloadFlow.emit(
-                                    item.id to DownloadStatus.Progress(
-                                        lastRead,
-                                        totalRead,
-                                        item.downloadSize
-                                    )
-                                )
-                                if (item.downloadSize != -1L &&
-                                    System.currentTimeMillis() / 1000 > lastTime
-                                ) {
-                                    notificationBuilder
-                                        .setContentText(
-                                            totalRead.formatAsFileSize() + " / " +
-                                                    item.downloadSize.formatAsFileSize()
-                                        )
-                                        .setProgress(
-                                            item.downloadSize.toInt(),
-                                            totalRead.toInt(),
-                                            false
-                                        )
-                                    notificationManager.notify(
-                                        item.getNotificationId(),
-                                        notificationBuilder.build()
-                                    )
-                                    lastTime = System.currentTimeMillis() / 1000
-                                }
-                            }
-                        } catch (_: CancellationException) {
-                        } catch (e: Exception) {
-                            toastFromMainThread("${getString(R.string.download)}: ${e.message}")
-                            _downloadFlow.emit(
-                                item.id to DownloadStatus.Error(
-                                    e.message.toString(),
-                                    e
-                                )
-                            )
-                        }
-
-                        withContext(Dispatchers.IO) {
-                            sink.flush()
-                            sink.close()
-                            sourceByte.close()
-                            con.disconnect()
-                        }
-                    } catch (_: Exception) {
-                    }
-                }
-
-                if (_downloadFlow.firstOrNull { it.first == item.id }?.second == DownloadStatus.Stopped) {
-                    downloadQueue.remove(item.id, false)
-                    return
-                }
-
-                val completed = when {
-                    totalRead < item.downloadSize -> {
-                        _downloadFlow.emit(item.id to DownloadStatus.Paused)
-                        false
-                    }
-
-                    else -> {
-                        _downloadFlow.emit(item.id to DownloadStatus.Completed)
-                        true
-                    }
-                }
-                setPauseNotification(notificationBuilder, item, completed)
-                pause(item.id)
+                item.downloadSize = size
+                Database.downloadDao().updateDownloadItem(item)
             }
-        }}
+        }
+
+        while (totalRead < item.downloadSize) {
+            try {
+                val con = startConnection(item, url, totalRead, item.downloadSize) ?: return
+
+                @Suppress("NewApi") // The StandardOpenOption enum is desugared.
+                val sink = path.sink(StandardOpenOption.APPEND).buffer()
+                val sourceByte = con.inputStream.source()
+
+                var lastTime = System.currentTimeMillis() / 1000
+                var lastRead: Long = 0
+
+                try {
+                    // Check if downloading is still active and read next bytes.
+                    while (downloadQueue[item.id] && sourceByte
+                            .read(sink.buffer, DownloadHelper.DOWNLOAD_CHUNK_SIZE)
+                            .also { lastRead = it } != -1L
+                    ) {
+                        sink.emit()
+                        totalRead += lastRead
+                        _downloadFlow.emit(
+                            item.id to DownloadStatus.Progress(
+                                lastRead,
+                                totalRead,
+                                item.downloadSize
+                            )
+                        )
+                        //Log.d("Amit","lastRead-$lastRead totalRead-$totalRead item.downloadSize-${item.downloadSize}")
+                        if (item.downloadSize != -1L &&
+                            System.currentTimeMillis() / 1000 > lastTime
+                        ) {
+                            notificationBuilder
+                                .setContentText(
+                                    totalRead.formatAsFileSize() + " / " +
+                                            item.downloadSize.formatAsFileSize()
+                                )
+                                .setProgress(
+                                    item.downloadSize.toInt(),
+                                    totalRead.toInt(),
+                                    false
+                                )
+                            notificationManager.notify(
+                                item.getNotificationId(),
+                                notificationBuilder.build()
+                            )
+                            lastTime = System.currentTimeMillis() / 1000
+                        }
+                    }
+
+                   if (totalRead == item.downloadSize && item.type == FileType.VIDEO){ //download completed
+                       Log.d("Amit"," download completed totalRead - $totalRead item.downloadSize - ${item.downloadSize}")
+                       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                           mergeVideo(item)
+                       }
+                   } else {
+                       Log.d("Amit","download not completed totalRead - $totalRead item.downloadSize - ${item.downloadSize}")
+                   }
+
+                } catch (_: CancellationException) {
+                } catch (e: Exception) {
+                    toastFromMainThread("${getString(R.string.download)}: ${e.message}")
+                    _downloadFlow.emit(item.id to DownloadStatus.Error(e.message.toString(), e))
+                }
+
+                withContext(Dispatchers.IO) {
+                    sink.flush()
+                    sink.close()
+                    sourceByte.close()
+                    con.disconnect()
+                }
+            } catch (_: Exception) {
+            }
+        }
+
+        if (_downloadFlow.firstOrNull { it.first == item.id }?.second == DownloadStatus.Stopped) {
+            downloadQueue.remove(item.id, false)
+            return
+        }
+
+        val completed = when {
+            totalRead < item.downloadSize -> {
+                _downloadFlow.emit(item.id to DownloadStatus.Paused)
+                false
+            }
+
+            else -> {
+                _downloadFlow.emit(item.id to DownloadStatus.Completed)
+                true
+
+            }
+        }
+
+
+
+        setPauseNotification(notificationBuilder, item, completed)
+        pause(item.id)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private suspend fun mergeVideo(item: DownloadItem) {
+        var videoFile = ""
+        var audioFile = ""
+        val MAX_SAMPLE_SIZE = 256 * 1024
+
+        Database.downloadDao().findDownloadItemsByVideoId(item.videoId).forEach {
+            run {
+                if (it.type == FileType.AUDIO) audioFile = it.path.toString()
+                if (it.type == FileType.VIDEO) videoFile = it.path.toString()
+            }
+        }
+
+        var result: Boolean
+        var muxer: MediaMuxer? = null
+        if (videoFile.isNotEmpty()) {
+        try {
+
+            // Set up MediaMuxer for the destination.
+
+            muxer = MediaMuxer(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).toString() + "/" + item.fileName+"_1.mp4",
+                MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4
+            )
+
+            Log.d("Amit","videoFile $videoFile audioFile $audioFile")
+            Log.d("Amit","muxer "+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).toString() + "/" + item.fileName)
+            // Copy the samples from MediaExtractor to MediaMuxer.
+
+            var videoFormat: MediaFormat? = null
+            var audioFormat: MediaFormat? = null
+
+            var muxerStarted: Boolean = false
+
+            var videoTrackIndex = -1
+            var audioTrackIndex = -1
+
+            // extractorVideo
+
+            var extractorVideo = MediaExtractor()
+
+            extractorVideo.setDataSource(videoFile)
+
+            val tracks = extractorVideo.trackCount
+
+            for (i in 0 until tracks) {
+
+                val mf = extractorVideo.getTrackFormat(i)
+
+                val mime = mf.getString(MediaFormat.KEY_MIME)
+
+                if (mime!!.startsWith("video/")) {
+
+                    extractorVideo.selectTrack(i)
+                    videoFormat = extractorVideo.getTrackFormat(i)
+
+                    break
+                }
+            }
+
+
+            // extractorAudio
+
+            var extractorAudio = MediaExtractor()
+
+            extractorAudio.setDataSource(audioFile)
+
+            for (i in 0 until tracks) {
+
+                val mf = extractorAudio.getTrackFormat(i)
+
+                val mime = mf.getString(MediaFormat.KEY_MIME)
+
+                if (mime!!.startsWith("audio/")) {
+
+                    extractorAudio.selectTrack(i)
+                    audioFormat = extractorAudio.getTrackFormat(i)
+
+                    break
+
+                }
+
+            }
+
+            val audioTracks = extractorAudio.trackCount
+
+            // videoTrackIndex
+
+            if (videoTrackIndex == -1) {
+
+                videoTrackIndex = muxer.addTrack(videoFormat!!)
+
+            }
+
+            // audioTrackIndex
+
+            if (audioTrackIndex == -1) {
+
+                audioTrackIndex = muxer.addTrack(audioFormat!!)
+
+            }
+
+            var sawEOS = false
+            var sawAudioEOS = false
+            val bufferSize = MAX_SAMPLE_SIZE
+            val dstBuf = ByteBuffer.allocate(bufferSize)
+            val offset = 0
+            val bufferInfo = MediaCodec.BufferInfo()
+
+            // start muxer
+
+            if (!muxerStarted) {
+
+                muxer.start()
+
+                muxerStarted = true
+
+            }
+
+            // write video
+
+            while (!sawEOS) {
+
+                bufferInfo.offset = offset
+                bufferInfo.size = extractorVideo.readSampleData(dstBuf, offset)
+
+                if (bufferInfo.size < 0) {
+
+                    sawEOS = true
+                    bufferInfo.size = 0
+
+                } else {
+
+                    bufferInfo.presentationTimeUs = extractorVideo.sampleTime
+                    bufferInfo.flags = MediaCodec.BUFFER_FLAG_SYNC_FRAME
+                    muxer.writeSampleData(videoTrackIndex, dstBuf, bufferInfo)
+                    extractorVideo.advance()
+
+                }
+
+            }
+
+            // write audio
+
+            val audioBuf = ByteBuffer.allocate(bufferSize)
+
+            while (!sawAudioEOS) {
+
+                bufferInfo.offset = offset
+                bufferInfo.size = extractorAudio.readSampleData(audioBuf, offset)
+
+                if (bufferInfo.size < 0) {
+
+                    sawAudioEOS = true
+                    bufferInfo.size = 0
+
+                } else {
+
+                    bufferInfo.presentationTimeUs = extractorAudio.sampleTime
+                    bufferInfo.flags = MediaCodec.BUFFER_FLAG_SYNC_FRAME
+                    muxer.writeSampleData(audioTrackIndex, audioBuf, bufferInfo)
+                    extractorAudio.advance()
+
+                }
+
+            }
+
+            extractorVideo.release()
+            extractorAudio.release()
+
+            result = true
+            //Merging success so remove the audio and video file
+            try {
+                emptyFile(audioFile)
+                emptyFile(videoFile)
+
+            } catch (e: Exception){
+                e.printStackTrace()
+            }
+
+        } catch (e: Exception) {
+
+            result = false
+
+            e.printStackTrace()
+
+        } finally {
+
+            if (muxer != null) {
+                muxer.stop()
+                muxer.release()
+            }
+
+        }
+
+    }
+    }
+
+    private fun emptyFile(filePath: String){
+        val overWrite =
+            FileOutputStream(filePath, false)
+        overWrite.write("".toByteArray())
+        overWrite.flush()
+        overWrite.close()
+    }
 
     private suspend fun startConnection(
         item: DownloadItem,
@@ -375,6 +595,7 @@ class DownloadService : LifecycleService() {
             stopSelf()
         }
     }
+
 
     /**
      * Regenerate stream url using available info format and quality.

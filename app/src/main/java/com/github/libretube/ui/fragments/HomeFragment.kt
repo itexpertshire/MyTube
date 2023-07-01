@@ -144,7 +144,7 @@ class HomeFragment : Fragment() {
         recommAdapter= VideosAdapter(
             recommendation.toMutableList(),
             showAllAtOnce = false,
-            hideWatched = PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false),
+            //hideWatched = PreferenceHelper.getBoolean(PreferenceKeys.HIDE_WATCHED_FROM_FEED, false),
             forceMode = VideosAdapter.Companion.ForceMode.TRENDING,
         )
 
