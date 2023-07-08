@@ -238,7 +238,11 @@ class DownloadService : LifecycleService() {
                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                            mergeVideo(item)
                        }
-                   } else {
+                   } else if (totalRead == item.downloadSize && item.type == FileType.AUDIO){
+                       Log.d("Amit"," download completed totalRead - $totalRead item.downloadSize - ${item.downloadSize}")
+                       moveAudioOnlyFile(item)
+                   }
+                   else {
                        Log.d("Amit","download not completed totalRead - $totalRead item.downloadSize - ${item.downloadSize}")
                    }
 
@@ -282,6 +286,28 @@ class DownloadService : LifecycleService() {
         pause(item.id)
     }
 
+    private suspend fun moveAudioOnlyFile(item: DownloadItem){
+        var videoFile = ""
+        var audioFile = ""
+
+        Database.downloadDao().findDownloadItemsByVideoId(item.videoId).forEach {
+            run {
+                if (it.type == FileType.AUDIO) audioFile = it.path.toString()
+                if (it.type == FileType.VIDEO) videoFile = it.path.toString()
+            }
+        }
+        Log.d("Amit"," moveAudioOnlyFile $audioFile")
+        Log.d("Amit"," moveAudioOnlyFile $videoFile")
+
+        if(audioFile.isNotEmpty() and videoFile.isEmpty() and (File(audioFile).length().toInt() > 100)){
+            ///Before copying the audio file , check if the corresponding video file is empty
+            Log.d("Amit"," moveAudioOnlyFile Copying File ${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).absolutePath}")
+                File(audioFile).copyTo(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).absolutePath+"/"+item.fileName),overwrite = true)
+                emptyFile(audioFile)
+
+        }
+    }
+
     @RequiresApi(Build.VERSION_CODES.Q)
     private suspend fun mergeVideo(item: DownloadItem) {
         var videoFile = ""
@@ -293,6 +319,9 @@ class DownloadService : LifecycleService() {
                 if (it.type == FileType.AUDIO) audioFile = it.path.toString()
                 if (it.type == FileType.VIDEO) videoFile = it.path.toString()
             }
+
+
+
         }
 
         var result: Boolean
